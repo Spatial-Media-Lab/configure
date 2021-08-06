@@ -16,24 +16,25 @@ class V2Device extends V2WebModule {
   #tabs = null;
   #info = null;
   #details = null;
-  #update = {
+  #update = Object.seal({
     element: null,
+    elementNewFirmware: null,
     elementUpload: null,
     elementProgress: null,
     notify: null,
-    firmware: {
+    firmware: Object.seal({
       bytes: null,
       hash: null,
       current: null
-    }
-  }
+    })
+  });
   #timeout = null;
   #sequence = 0;
   #token = null;
-  #notifiers = {
+  #notifiers = Object.seal({
     show: [],
     reset: []
-  };
+  });
 
   constructor(log, connect) {
     super();
@@ -562,6 +563,10 @@ class V2Device extends V2WebModule {
       });
     });
 
+    V2Web.addElement(this.#update.element, 'div', (e) => {
+      this.#update.elementNewFirmware = e;
+    });
+
     if (!this.#tabs.current)
       this.#tabs.switchTab('information');
   }
@@ -757,6 +762,10 @@ class V2Device extends V2WebModule {
 
   // Present a new firmware image to update the current one.
   #showFirmware(bytes) {
+    this.#update.notify.clear();
+    while (this.#update.elementNewFirmware.firstChild)
+      this.#update.elementNewFirmware.firstChild.remove();
+
     // Read the metadata in the image; the very end of the image contains
     // the the JSON metadata record with a leading and trailing NUL character.
     let metaStart = bytes.length - 2;
@@ -788,14 +797,14 @@ class V2Device extends V2WebModule {
     // We found metadata in the loaded image.
     this.#update.firmware.bytes = bytes;
 
-    V2Web.addElement(this.#update.element, 'p', (e) => {
+    V2Web.addElement(this.#update.elementNewFirmware, 'p', (e) => {
       e.classList.add('subtitle');
       e.textContent = 'Firmware Update';
     });
 
     let elementHash = null;
 
-    V2Web.addElement(this.#update.element, 'div', (e) => {
+    V2Web.addElement(this.#update.elementNewFirmware, 'div', (e) => {
       e.classList.add('table-container');
 
       V2Web.addElement(e, 'table', (table) => {

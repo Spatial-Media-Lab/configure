@@ -10,6 +10,15 @@ class V2Web {
     this.setupMenu();
   }
 
+  static registerWorker(worker) {
+    if (!('serviceWorker' in navigator))
+      return;
+
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(worker).then(null, () => {});
+    });
+  }
+
   static setupMenu() {
     const burger = document.querySelector('.navbar-burger');
     const menu = document.querySelector('.navbar-menu');
@@ -264,7 +273,8 @@ class V2WebModule {
     this.#title = title;
 
     this.#section = document.createElement('section');
-    this.#section.id = id;
+    if (this.#id)
+      this.#section.id = id;
 
     V2Web.addElement(this.#section, 'div', (container) => {
       container.classList.add('container');

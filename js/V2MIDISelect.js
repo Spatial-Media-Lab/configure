@@ -4,11 +4,11 @@
 class V2MIDISelect {
   #element = null;
   #select = null;
-  #notifiers = {
+  #notifiers = Object.seal({
     select: [],
     disconnect: [],
     add: []
-  };
+  });
   #devices = null;
 
   constructor(canvas, handler) {

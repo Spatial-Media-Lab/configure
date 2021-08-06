@@ -2,15 +2,15 @@
 <html lang="en">
 
 <head>
-  <meta name="version" content="30">
-  <meta name="revised" content="2021-08-05">
+  <meta name="version" content="34">
+  <meta name="revised" content="2021-08-06">
   <meta name="copyright" content="Kay Sievers, kay@vrfy.org">
   <meta name="license" content="Apache-2.0">
   <meta name="rating" content="safe for kids">
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
   <title>Spatial Media Lab - Device Configuration</title>
   <meta name="description" content="WebMIDI Device Configuration">
-  <link rel="canonical" href="https://support.spatialmedialab.org/configure">
+  <link rel="canonical" href="https://spatial-media-lab.github.io/configure/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="thumbnail" content="icons/logo.png">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
@@ -139,6 +139,9 @@
   <script src="js/V2Debug.js"></script>
   <script>
     'use strict';
+
+    // Allow to cache the content for offline operation, or to install it as a standalone web application.
+    V2Web.registerWorker('service-worker.js');
 
     // Initialize the menu.
     V2Web.setup();

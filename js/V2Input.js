@@ -5,27 +5,27 @@
 class V2Input extends V2WebModule {
   #device = null;
   #channel = 0;
-  #controls = {
+  #controls = Object.seal({
     element: null,
     program: null
-  };
-  #controllers = {
+  });
+  #controllers = Object.seal({
     element: null,
     elementList: null
-  };
-  #notes = {
+  });
+  #notes = Object.seal({
     element: null,
-    controls: {
+    controls: Object.seal({
       element: null,
       velocity: 15
-    },
+    }),
     elementList: null,
-    chromatic: {
+    chromatic: Object.seal({
       element: null,
       start: 0,
       count: 0
-    }
-  };
+    })
+  });
 
   constructor(device) {
     super('input', 'MIDI In', 'Play notes and adjust controllers');

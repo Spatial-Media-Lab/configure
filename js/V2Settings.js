@@ -88,11 +88,11 @@ class V2SettingsCalibration extends V2SettingsModule {
   #program = 0;
   #values = null;
   #playTimer = null;
-  #notes = {
+  #notes = Object.seal({
     element: null,
     channel: 0,
     program: 0
-  };
+  });
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);

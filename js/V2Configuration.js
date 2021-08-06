@@ -4,14 +4,14 @@
 class V2Configuration extends V2WebModule {
   #device = null;
   #tabs = null;
-  #settings = {
+  #settings = Object.seal({
     element: null,
     object: null
-  };
-  #system = {
+  });
+  #system = Object.seal({
     element: null,
     object: null
-  };
+  });
 
   constructor(device) {
     super('configuration', 'Configuration', 'Setup, backup, restore, reset');

@@ -4,21 +4,21 @@
 // MIDI Output controllers and notes.
 class V2Output extends V2WebModule {
   #device = null;
-  #channel = {
+  #channel = Object.seal({
     element: null,
     elementValue: null,
     value: null
-  };
-  #controllers = {
+  });
+  #controllers = Object.seal({
     element: null,
     elementList: null,
     list: null
-  };
-  #notes = {
+  });
+  #notes = Object.seal({
     element: null,
     elementList: null,
     list: null
-  };
+  });
 
   constructor(device) {
     super('output', 'MIDI Out', 'Receive notes and control changes');

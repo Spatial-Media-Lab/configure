@@ -1,6 +1,8 @@
 {
-  "name": "Versio Duo",
-  "short_name": "V2",
+  "name": "Spatial Media Lab Device Configuration",
+  "short_name": "SML Configure",
+  "start_url": "./",
+  "scope": ".",
   "icons": [{
     "src": "icons/android-chrome-192x192.png",
     "sizes": "192x192",

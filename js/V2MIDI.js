@@ -7,21 +7,21 @@ class V2MIDI {
   // The octave numbers -2 to 8 are not defined by MIDI itself, it's just what
   // some vendors of instruments and audio workstation software use. The middle
   // C (Number == 60) in this mapping is C3.
-  static Note = {
+  static Note = Object.freeze({
     names: ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'],
 
-    name(note) {
+    name: (note) => {
       const octave = Math.trunc(note / 12) - 2;
-      return this.names[note % 12] + octave;
+      return this.Note.names[note % 12] + octave;
     },
 
-    isBlack(note) {
-      return this.names[note % 12].includes('♯');
+    isBlack: (note) => {
+      return this.Note.names[note % 12].includes('♯');
     }
-  };
+  });
 
   // MIDI Control Change (CC) values.
-  static CC = {
+  static CC = Object.freeze({
     // MSB Controller Data.
     bankSelect: 0,
     modulationWheel: 1,
@@ -138,7 +138,7 @@ class V2MIDI {
     monoModeOn: 126,
     polyModeOn: 127,
 
-    Name: {
+    Name: Object.freeze({
       0: 'Bank Select',
       1: 'Modulation',
       2: 'Breath',
@@ -185,13 +185,13 @@ class V2MIDI {
       121: 'Reset',
       122: 'Local',
       123: 'Notes Off'
-    }
-  };
+    })
+  });
 
   // The MIDI wire protocol's status byte definitions.The first byte of a
   // message, the only byte with the 7th bit set. The lower 4 bit are the
   // channel number or the system message type.
-  static Status = {
+  static Status = Object.freeze({
     noteOff: 0x80 | (0 << 4),
     noteOn: 0x80 | (1 << 4),
     aftertouch: 0x80 | (2 << 4),
@@ -216,27 +216,27 @@ class V2MIDI {
     systemActiveSensing: 0x80 | (7 << 4) | 14,
     systemReset: 0x80 | (7 << 4) | 15,
 
-    getType(status) {
+    getType: (status) => {
       // Remove channel number.
-      if ((status & 0xf0) != V2MIDI.Status.system)
+      if ((status & 0xf0) != this.Status.system)
         return status & 0xf0;
 
       // Return 'system' message type.
       return status;
     },
 
-    getChannel(status) {
+    getChannel: (status) => {
       return status & 0x0f;
     }
-  };
+  });
 
   // The WebMIDI system context.
   #system = null;
 
   // Subscription to device connect/disconnect events.
-  #notifiers = {
+  #notifiers = Object.seal({
     state: []
-  };
+  });
 
   addNotifier(type, handler) {
     this.#notifiers[type].push(handler);
@@ -356,14 +356,14 @@ class V2MIDIDevice {
   input = null;
   output = null;
 
-  #notifiers = {
+  #notifiers = Object.seal({
     note: [],
     noteOff: [],
     aftertouch: [],
     controlChange: [],
     aftertouchChannel: [],
     systemExclusive: []
-  };
+  });
 
   addNotifier(type, handler) {
     this.#notifiers[type].push(handler);

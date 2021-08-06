@@ -6,26 +6,26 @@ class V2Test extends V2WebModule {
   #device = null;
 
   constructor(device) {
-    const note = {
+    const note = Object.seal({
       channel: null,
       note: null,
       velocity: null,
       range: null
-    };
-    const noteOff = {
+    });
+    const noteOff = Object.seal({
       channel: null,
       note: null,
       velocity: null
-    };
-    const program = {
+    });
+    const program = Object.seal({
       channel: null,
       number: null
-    };
-    const control = {
+    });
+    const control = Object.seal({
       channel: null,
       controller: null,
       value: null
-    };
+    });
     let json = null;
 
     super('test', 'Test', 'Send generic MIDI messages');
