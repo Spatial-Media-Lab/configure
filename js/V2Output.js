@@ -22,14 +22,18 @@ class V2Output extends V2WebModule {
 
   constructor(device) {
     super('output', 'MIDI Out', 'Receive notes and control changes');
-    super.attach();
     this.#device = device;
 
     this.#device.addNotifier('show', (data) => {
+      if (!data.output)
+        return;
+
       this.#show(data);
+      this.attach();
     });
 
     this.#device.addNotifier('reset', () => {
+      this.detach();
       this.#clear();
     });
 
@@ -52,15 +56,15 @@ class V2Output extends V2WebModule {
       }
     }
 
-    this.#device.device.addNotifier('note', (channel, note, velocity) => {
+    this.#device.getDevice().addNotifier('note', (channel, note, velocity) => {
       updateNote(channel, note, velocity);
     });
 
-    this.#device.device.addNotifier('noteOff', (channel, note, velocity) => {
+    this.#device.getDevice().addNotifier('noteOff', (channel, note, velocity) => {
       updateNote(channel, note, 0);
     });
 
-    this.#device.device.addNotifier('aftertouch', (channel, note, pressure) => {
+    this.#device.getDevice().addNotifier('aftertouch', (channel, note, pressure) => {
       if (this.#channel.value != null && this.#channel.value != channel)
         return;
 
@@ -70,7 +74,7 @@ class V2Output extends V2WebModule {
       this.#notes.list[note].aftertouch.value = pressure;
     });
 
-    this.#device.device.addNotifier('controlChange', (channel, controller, value) => {
+    this.#device.getDevice().addNotifier('controlChange', (channel, controller, value) => {
       if (this.#channel.value != null && this.#channel.value != channel)
         return;
 
@@ -92,6 +96,8 @@ class V2Output extends V2WebModule {
           this.#controllers.list[controller].button.classList.remove('is-link');
       }
     });
+
+    return Object.seal(this);
   }
 
   #addController(name, controller, type, value, valueFine) {

@@ -7,7 +7,8 @@ class V2Input extends V2WebModule {
   #channel = 0;
   #controls = Object.seal({
     element: null,
-    program: null
+    program: null,
+    bank: null
   });
   #controllers = Object.seal({
     element: null,
@@ -29,17 +30,23 @@ class V2Input extends V2WebModule {
 
   constructor(device) {
     super('input', 'MIDI In', 'Play notes and adjust controllers');
-    super.attach();
     this.#device = device;
 
     this.#device.addNotifier('show', (data) => {
+      if (!data.input)
+        return;
+
       this.#show(data);
+      this.attach();
     });
 
     this.#device.addNotifier('reset', () => {
       this.#channel = 0;
+      this.detach();
       this.#clear();
     });
+
+    return Object.seal(this);
   }
 
   #addController(name, controller, type, value, valueFine) {
@@ -141,14 +148,14 @@ class V2Input extends V2WebModule {
             e.addEventListener('touchstart', (event) => {
               e.classList.add('is-active');
               e.dispatchEvent(new MouseEvent('mousedown'));
-              event.preventDefault();
             }, {
               passive: true
             });
             e.addEventListener('touchend', (event) => {
               e.classList.remove('is-active');
               e.dispatchEvent(new MouseEvent('mouseup'));
-              event.preventDefault();
+              if (event.cancellable)
+                event.preventDefault();
             });
           });
           break;
@@ -212,14 +219,14 @@ class V2Input extends V2WebModule {
             e.addEventListener('touchstart', (event) => {
               e.classList.add('is-active');
               e.dispatchEvent(new MouseEvent('mousedown'));
-              event.preventDefault();
             }, {
               passive: true
             });
             e.addEventListener('touchend', (event) => {
               e.classList.remove('is-active');
               e.dispatchEvent(new MouseEvent('mouseup'));
-              event.preventDefault();
+              if (event.cancelable)
+                event.preventDefault();
             });
 
             if (i < first || i > last)
@@ -274,14 +281,14 @@ class V2Input extends V2WebModule {
         e.addEventListener('touchstart', (event) => {
           e.classList.add('is-active');
           e.dispatchEvent(new MouseEvent('mousedown'));
-          event.preventDefault();
         }, {
           passive: true
         });
         e.addEventListener('touchend', (event) => {
           e.classList.remove('is-active');
           e.dispatchEvent(new MouseEvent('mouseup'));
-          event.preventDefault();
+          if (event.cancellable)
+            event.preventDefault();
         });
       });
     });
@@ -296,6 +303,7 @@ class V2Input extends V2WebModule {
           return false;
 
         this.#controls.program = program.number;
+        this.#controls.bank = program.bank;
         return true;
       });
 
@@ -314,16 +322,21 @@ class V2Input extends V2WebModule {
           V2Web.addElement(e, 'select', (select) => {
             select.title = 'Send MIDI Program Change';
 
-            for (const program of channel.programs)
+            for (const [index, program] of channel.programs.entries())
               V2Web.addElement(select, 'option', (e) => {
-                e.title = '#' + (program.number + 1);
-                e.value = program.number;
-                e.text = (program.number + 1) + ' - ' + program.name;
-                e.selected = (program.number == this.#controls.program);
+                e.title = 'Program ' + (program.number + 1) + (this.#controls.bank != null ? ', Bank ' + (program.bank + 1) : '');
+                e.text = (program.number + 1) + (this.#controls.bank != null ? ' Bank ' + (program.bank + 1) : '') + ' – ' + program.name;
+                e.selected = (program.number == this.#controls.program) && (program.bank == this.#controls.bank);
               })
 
             select.addEventListener('change', () => {
               this.#controls.program = channel.programs[select.selectedIndex].number;
+              this.#controls.bank = channel.programs[select.selectedIndex].bank;
+
+              const msb = (channel.programs[select.selectedIndex].bank >> 7) & 0x7f;
+              const lsb = channel.programs[select.selectedIndex].bank & 0x7f;
+              this.#device.sendControlChange(this.#channel, V2MIDI.CC.bankSelect, msb);
+              this.#device.sendControlChange(this.#channel, V2MIDI.CC.bankSelectLSB, lsb);
               this.#device.sendProgramChange(this.#channel, channel.programs[select.selectedIndex].number);
               this.#device.sendGetAll();
             });
@@ -431,7 +444,8 @@ class V2Input extends V2WebModule {
 
           e.addEventListener('touchend', (event) => {
             e.dispatchEvent(new MouseEvent('mouseup'));
-            event.preventDefault();
+            if (event.cancellable)
+              event.preventDefault();
           });
         });
       }
@@ -487,7 +501,8 @@ class V2Input extends V2WebModule {
 
           e.addEventListener('touchend', (event) => {
             e.dispatchEvent(new MouseEvent('mouseup'));
-            event.preventDefault();
+            if (event.cancellable)
+              event.preventDefault();
           });
         });
       }

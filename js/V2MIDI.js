@@ -46,26 +46,26 @@ class V2MIDI {
 
     // LSB for controllers 0 to 31.
     controllerLSB: 32,
-    bankSelectLSB: this.controllerLSB + this.bankSelect,
-    modulationWheelLSB: this.controllerLSB + this.modulationWheel,
-    breathControllerLSB: this.controllerLSB + this.breathController,
-    controller3LSB: this.controllerLSB + this.controller3,
-    footControllerLSB: this.controllerLSB + this.footController,
-    portamentoTimeLSB: this.controllerLSB + this.portamentoTime,
-    dataEntryLSB: this.controllerLSB + this.dataEntry,
-    channelVolumeLSB: this.controllerLSB + this.channelVolume,
-    balanceLSB: this.controllerLSB + this.balance,
-    controller9LSB: this.controllerLSB + this.controller9,
-    panLSB: this.controllerLSB + this.pan,
-    expressionLSB: this.controllerLSB + this.expression,
-    effectControl1LSB: this.controllerLSB + this.effectControl1,
-    effectControl2LSB: this.controllerLSB + this.effectControl2,
-    controller14LSB: this.controllerLSB + this.controller14,
-    controller15LSB: this.controllerLSB + this.controller15,
-    generalPurpose1LSB: this.controllerLSB + this.generalPurpose1,
-    generalPurpose2LSB: this.controllerLSB + this.generalPurpose2,
-    generalPurpose3LSB: this.controllerLSB + this.generalPurpose3,
-    generalPurpose4LSB: this.controllerLSB + this.generalPurpose4,
+    bankSelectLSB: 32,
+    modulationWheelLSB: 33,
+    breathControllerLSB: 34,
+    controller3LSB: 35,
+    footControllerLSB: 36,
+    portamentoTimeLSB: 37,
+    dataEntryLSB: 38,
+    channelVolumeLSB: 39,
+    balanceLSB: 40,
+    controller9LSB: 41,
+    panLSB: 42,
+    expressionLSB: 43,
+    effectControl1LSB: 44,
+    effectControl2LSB: 45,
+    controller14LSB: 46,
+    controller15LSB: 47,
+    generalPurpose1LSB: 48,
+    generalPurpose2LSB: 49,
+    generalPurpose3LSB: 50,
+    generalPurpose4LSB: 51,
 
     // Single-byte Controllers.
     sustain: 64,
@@ -188,6 +188,365 @@ class V2MIDI {
     })
   });
 
+  static GM = Object.freeze({
+    Program: Object.freeze({
+      // Piano
+      acousticGrandPiano: 0,
+      brightAcousticPiano: 1,
+      electricGrandPiano: 2,
+      honkyTonkPiano: 3,
+      electricPiano1: 4,
+      electricPiano2: 5,
+      harpsichord: 6,
+      clavi: 7,
+
+      // Chromatic Percussion
+      celesta: 8,
+      glockenspiel: 9,
+      musicBox: 10,
+      vibraphone: 11,
+      marimba: 12,
+      xylophone: 13,
+      tubularBells: 14,
+      dulcimer: 15,
+
+      // Organ
+      drawbarOrgan: 16,
+      percussiveOrgan: 17,
+      rockOrgan: 18,
+      churchOrgan: 19,
+      reedOrgan: 20,
+      accordion: 21,
+      harmonica: 22,
+      tangoAccordion: 23,
+
+      //Guitar
+      acousticGuitarNylon: 24,
+      acousticGuitarSsteel: 25,
+      electricGuitarJazz: 26,
+      electricGuitarClean: 27,
+      electricGuitarMuted: 28,
+      overdrivenGuitar: 29,
+      distortionGuitar: 30,
+      guitarHarmonics: 31,
+
+      // Bass
+      acousticBass: 32,
+      electricBassFinger: 33,
+      electricBassPick: 34,
+      fretlessBass: 35,
+      slapBass1: 36,
+      slapBass2: 37,
+      synthBass1: 38,
+      synthBass2: 39,
+
+      // Strings
+      violin: 40,
+      viola: 41,
+      cello: 42,
+      contrabass: 43,
+      tremoloStrings: 44,
+      pizzicatoStrings: 45,
+      orchestralHarp: 46,
+
+      // Ensemble
+      timpani: 47,
+      stringEnsemble1: 48,
+      stringEnsemble2: 49,
+      synthStrings1: 50,
+      synthStrings2: 51,
+      choirAahs: 52,
+      voiceOohs: 53,
+      synthVoice: 54,
+      orchestraHit: 55,
+
+      // Brass
+      trumpet: 56,
+      trombone: 57,
+      tuba: 58,
+      mutedTrumpet: 59,
+      frenchHorn: 60,
+      brassSection: 61,
+      synthBrass1: 62,
+      synthBrass2: 63,
+
+      // Reed
+      sopranoSax: 64,
+      altoSax: 65,
+      tenorSax: 66,
+      baritoneSax: 67,
+      oboe: 68,
+      englishHorn: 69,
+      bassoon: 70,
+      clarinet: 71,
+
+      // Pipe
+      piccolo: 72,
+      flute: 73,
+      recorder: 74,
+      panFlute: 75,
+      blownBottle: 76,
+      shakuhachi: 77,
+      whistle: 78,
+      ocarina: 79,
+
+      // Synth Lead
+      lead1Square: 80,
+      lead2Sawtooth: 81,
+      lead3Calliope: 82,
+      lead4Chiff: 83,
+      lead5Charang: 84,
+      lead6Voice: 85,
+      lead7Ffifths: 86,
+      lead8Bass: 87,
+
+      // Synth Pad
+      pad1NewAge: 88,
+      pad2Warm: 89,
+      pad3Polysynth: 90,
+      pad4Choir: 91,
+      pad5Bowed: 92,
+      pad6Metallic: 93,
+      pad7Halo: 94,
+      pad8Sweep: 95,
+
+      // Synth Effects
+      fx1Rain: 96,
+      fx2Soundtrack: 97,
+      fx3Crystal: 98,
+      fx4Atmosphere: 99,
+      fx5Brightness: 100,
+      fx6Goblins: 101,
+      fx7Echoes: 102,
+      fx8SciFi: 103,
+
+      // Ethnic Percussive
+      sitar: 104,
+      banjo: 105,
+      shamisen: 106,
+      koto: 107,
+      kalimba: 108,
+      bagPipe: 109,
+      fiddle: 110,
+      shanai: 111,
+
+      // Percussive
+      tinkleBell: 112,
+      agogo: 113,
+      steelDrums: 114,
+      woodblock: 115,
+      taikoDrum: 116,
+      melodicTom: 117,
+      synthDrum: 118,
+      reverseCymbal: 119,
+
+      // Sound Effects
+      guitarFretNoise: 120,
+      breathNoise: 121,
+      seashore: 122,
+      birdTweet: 123,
+      telephoneRing: 124,
+      helicopter: 125,
+      applause: 126,
+      gunshot: 127,
+
+      Name: Object.freeze({
+        0: 'Acoustic Grand Piano',
+        1: 'Bright Acoustic Piano',
+        2: 'Electric Grand Piano',
+        3: 'Honky-tonk Piano',
+        4: 'Electric Piano 1',
+        5: 'Electric Piano 2',
+        6: 'Harpsichord',
+        7: 'Clavi',
+        8: 'Celesta',
+        9: 'Glockenspiel',
+        10: 'Music Box',
+        11: 'Vibraphone',
+        12: 'Marimba',
+        13: 'Xylophone',
+        14: 'Tubular Bells',
+        15: 'Dulcimer',
+        16: 'Drawbar Organ',
+        17: 'Percussive Organ',
+        18: 'Rock Organ',
+        19: 'Church Organ',
+        20: 'Reed Organ',
+        21: 'Accordion',
+        22: 'Harmonica',
+        23: 'Tango Accordion',
+        24: 'Acoustic Guitar (nylon',
+        25: 'Acoustic Guitar (steel)',
+        26: 'Electric Guitar (jazz)',
+        27: 'Electric Guitar (clean)',
+        28: 'Electric Guitar (muted)',
+        29: 'Overdriven Guitar',
+        30: 'Distortion Guitar',
+        31: 'Guitar harmonics',
+        32: 'Acoustic Bass',
+        33: 'Electric Bass (finger)',
+        34: 'Electric Bass (pick)',
+        35: 'Fretless Bass',
+        36: 'Slap Bass 1',
+        37: 'Slap Bass 2',
+        38: 'Synth Bass 1',
+        39: 'Synth Bass 2',
+        40: 'Violin',
+        41: 'Viola',
+        42: 'Cello',
+        43: 'Contrabass',
+        44: 'Tremolo Strings',
+        45: 'Pizzicato Strings',
+        46: 'Orchestral Harp',
+        47: 'Timpani',
+        48: 'String Ensemble 1',
+        49: 'String Ensemble 2',
+        50: 'SynthStrings 1',
+        51: 'SynthStrings 2',
+        52: 'Choir Aahs',
+        53: 'Voice Oohs',
+        54: 'Synth Voice',
+        55: 'Orchestra Hit',
+        56: 'Trumpet',
+        57: 'Trombone',
+        58: 'Tuba',
+        59: 'Muted Trumpet',
+        60: 'French Horn',
+        61: 'Brass Section',
+        62: 'SynthBrass 1',
+        63: 'SynthBrass 2',
+        64: 'Soprano Sax',
+        65: 'Alto Sax',
+        66: 'Tenor Sax',
+        67: 'Baritone Sax',
+        68: 'Oboe',
+        69: 'English Horn',
+        70: 'Bassoon',
+        71: 'Clarinet',
+        72: 'Piccolo',
+        73: 'Flute',
+        74: 'Recorder',
+        75: 'Pan Flute',
+        76: 'Blown Bottle',
+        77: 'Shakuhachi',
+        78: 'Whistle',
+        79: 'Ocarina',
+        80: 'Lead 1 (square)',
+        81: 'Lead 2 (sawtooth)',
+        82: 'Lead 3 (calliope)',
+        83: 'Lead 4 (chiff)',
+        84: 'Lead 5 (charang)',
+        85: 'Lead 6 (voice)',
+        86: 'Lead 7 (fifths)',
+        87: 'Lead 8 (bass + lead) ',
+        88: 'Pad 1 (new age)',
+        89: 'Pad 2 (warm)',
+        90: 'Pad 3 (polysynth)',
+        91: 'Pad 4 (choir)',
+        92: 'Pad 5 (bowed)',
+        93: 'Pad 6 (metallic)',
+        94: 'Pad 7 (halo)',
+        95: 'Pad 8 (sweep)',
+        96: 'FX 1 (rain)',
+        97: 'FX 2 (soundtrack)',
+        98: 'FX 3 (crystal)',
+        99: 'FX 4 (atmosphere)',
+        100: 'FX 5 (brightness)',
+        101: 'FX 6 (goblins)',
+        102: 'FX 7 (echoes)',
+        103: 'FX 8 (sci-fi)',
+        104: 'Sitar',
+        105: 'Banjo',
+        106: 'Shamisen',
+        107: 'Koto',
+        108: 'Kalimba',
+        109: 'Bag pipe',
+        110: 'Fiddle',
+        111: 'Shanai',
+        112: 'Tinkle Bell',
+        113: 'Agogo',
+        114: 'Steel Drums',
+        115: 'Woodblock',
+        116: 'Taiko Drum',
+        117: 'Melodic Tom',
+        118: 'Synth Drum',
+        119: 'Reverse Cymbal',
+        120: 'Guitar Fret Noise ',
+        121: 'Breath Noise',
+        122: 'Seashore',
+        123: 'Bird Tweet',
+        124: 'Telephone Ring ',
+        125: 'Helicopter',
+        126: 'Applause',
+        127: 'Gunshot'
+      })
+    }),
+
+    Percussion: Object.freeze({
+      highQ: 27,
+      slap: 28,
+      scratchPush: 29,
+      scratchPull: 30,
+      sticks: 31,
+      squareClick: 32,
+      metronomeClick: 33,
+      metronomeBell: 34,
+      acousticBassDrum: 35,
+      bassDrum1: 36,
+      sideStick: 37,
+      acousticSnare: 38,
+      handClap: 39,
+      electricSnare: 40,
+      lowFloorTom: 41,
+      closedHiHat: 42,
+      highFloorTom: 43,
+      pedalHiHat: 44,
+      lowTom: 45,
+      openHiHat: 46,
+      lowMidTom: 47,
+      hiMidTom: 48,
+      crashCymbal1: 49,
+      highTom: 50,
+      rideCymbal1: 51,
+      chineseCymbal: 52,
+      rideBell: 53,
+      tambourine: 54,
+      splashCymbal: 55,
+      cowbell: 56,
+      crashCymbal2: 57,
+      vibraslap: 58,
+      rideCymbal2: 59,
+      hiBongo: 60,
+      lowBongo: 61,
+      muteHiConga: 62,
+      openHiConga: 63,
+      lowConga: 64,
+      highTimbale: 65,
+      lowTimbale: 66,
+      highAgogo: 67,
+      lowAgogo: 68,
+      cabasa: 69,
+      maracas: 70,
+      shortWhistle: 71,
+      longWhistle: 72,
+      shortGuiro: 73,
+      longGuiro: 74,
+      claves: 75,
+      hiWoodBlock: 76,
+      lowWoodBlock: 77,
+      muteCuica: 78,
+      openCuica: 79,
+      muteTriangle: 80,
+      openTriangle: 81,
+      shaker: 82,
+      jingleBell: 83,
+      bellTree: 84,
+      castanets: 85,
+      muteSurdo: 86,
+      openSurdo: 87
+    })
+  });
+
   // The MIDI wire protocol's status byte definitions.The first byte of a
   // message, the only byte with the 7th bit set. The lower 4 bit are the
   // channel number or the system message type.
@@ -237,6 +596,10 @@ class V2MIDI {
   #notifiers = Object.seal({
     state: []
   });
+
+  constructor() {
+    return Object.seal(this);
+  }
 
   addNotifier(type, handler) {
     this.#notifiers[type].push(handler);
@@ -365,6 +728,10 @@ class V2MIDIDevice {
     systemExclusive: []
   });
 
+  constructor() {
+    return Object.seal(this);
+  }
+
   addNotifier(type, handler) {
     this.#notifiers[type].push(handler);
   }
@@ -444,6 +811,13 @@ class V2MIDIDevice {
   }
 
   // Outgoing messages.
+  sendPacket(packet) {
+    if (!this.output)
+      return;
+
+    this.output.send(packet);
+  }
+
   sendNote(channel, note, velocity) {
     if (!this.output)
       return;
@@ -460,7 +834,7 @@ class V2MIDIDevice {
     this.output.send([V2MIDI.Status.noteOff | channel, note, velocity]);
   }
 
-  sendControlChange(channel, controller, value) {
+  sendControlChange(channel, controller, value = 0) {
     if (!this.output)
       return;
 

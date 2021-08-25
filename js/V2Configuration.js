@@ -15,7 +15,6 @@ class V2Configuration extends V2WebModule {
 
   constructor(device) {
     super('configuration', 'Configuration', 'Setup, backup, restore, reset');
-    super.attach();
     this.#device = device;
 
     new V2WebTabs(this.canvas, (tabs) => {
@@ -40,6 +39,8 @@ class V2Configuration extends V2WebModule {
 
       if (!this.#tabs.current)
         this.#tabs.switchTab('settings');
+
+      this.attach();
     });
 
     this.#device.addNotifier('reset', () => {
@@ -48,7 +49,11 @@ class V2Configuration extends V2WebModule {
       this.#system.object.clear();
       this.#tabs.resetTab('settings');
       this.#tabs.resetTab('system');
+
+      this.detach();
     });
+
+    return Object.seal(this);
   }
 
   register(module) {
@@ -80,6 +85,8 @@ class V2ConfigurationSettings {
     this.register(V2SettingsMIDI);
     this.register(V2SettingsText);
     this.register(V2SettingsUSB);
+
+    return Object.seal(this);
   }
 
   register(module) {
@@ -162,12 +169,10 @@ class V2ConfigurationSettings {
       'method': 'writeConfiguration',
       'configuration': configuration
     });
-    this.#device.setEnabled(false);
 
     this.#timeout = setTimeout(() => {
       this.#timeout = null;
       this.#notify.error('No reply from device. Changes might not be not saved.');
-      this.#device.setEnabled(true);
       this.#device.printDevice('No reply from device');
     }, 1000);
   }
@@ -184,6 +189,8 @@ class V2ConfigurationSystem {
   constructor(device, canvas) {
     this.#device = device;
     this.#canvas = canvas;
+
+    return Object.seal(this);
   }
 
   show(data) {
@@ -203,7 +210,11 @@ class V2ConfigurationSystem {
         e.textContent = 'Restore';
         e.title = 'Read a configuration from a file';
         e.addEventListener('click', () => {
-          this.#open();
+          this.#openFile();
+        });
+
+        V2Web.addFileDrop(e, this.#canvas, ['is-focused', 'is-link', 'is-light'], (file) => {
+          this.#readFile(file);
         });
       });
 
@@ -230,7 +241,6 @@ class V2ConfigurationSystem {
     V2Web.addElement(this.#canvas, 'textarea', (e) => {
       this.#elementJSON = e;
       e.classList.add('textarea');
-      e.classList.add('isEnabled');
       e.placeholder = 'No configuration loaded';
       e.rows = 1;
       e.disabled = true;
@@ -310,49 +320,40 @@ class V2ConfigurationSystem {
     const date = new Date();
     const config = {
       '#': 'Device configuration export',
-      'vendor': this.#device.data.metadata.vendor,
-      'product': this.#device.data.metadata.product,
-      'version': this.#device.data.metadata.version,
-      'serial': this.#device.data.metadata.serial,
+      'vendor': this.#device.getData().metadata.vendor,
+      'product': this.#device.getData().metadata.product,
+      'version': this.#device.getData().metadata.version,
+      'serial': this.#device.getData().metadata.serial,
       'creator': window.location.href,
       'date': date.toISOString(),
       'configuration': configuration
     };
 
     const json = JSON.stringify(config, null, '  ');
-    let name = this.#device.data.metadata.product;
-    if (this.#device.data.metadata.name)
-      name += '-' + this.#device.data.metadata.name;
+    let name = this.#device.getData().metadata.product;
+    if (this.#device.getData().metadata.name)
+      name += '-' + this.#device.getData().metadata.name;
     name += '.json';
+
+    const url = URL.createObjectURL(new Blob([json], {
+      type: 'application/json'
+    }));
 
     // Temporarily create an anchor and download the file as URI.
     const a = document.createElement('a');
-    a.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(json));
-    a.setAttribute('download', name.replace(/ /g, '-'));
-    a.style.display = 'none';
+    a.href = url;
+    a.download = name.replace(/ /g, '-');
     a.click();
+    URL.revokeObjectURL(url);
   }
 
-  // Load a JSON file into the text field.
-  #open() {
-    // Temporarily create a 'browse button' and trigger a file upload.
-    const input = document.createElement('input');
-    input.setAttribute('type', 'file');
-    input.setAttribute('accept', '.json,.txt,.conf');
-    input.style.display = 'none';
+  #readFile(file) {
+    const reader = new FileReader();
+    reader.onload = (element) => {
+      this.#notify.clear();
 
-    input.addEventListener('change', () => {
-      const reader = new FileReader();
-      reader.onload = (element) => {
-        let config;
-
-        try {
-          config = JSON.parse(reader.result);
-
-        } catch (error) {
-          this.#notify.warn('Unable to parse JSON from file');
-          return;
-        }
+      try {
+        const config = JSON.parse(reader.result);
 
         if (!config.configuration) {
           this.#notify.warn('No valid configuration found in file');
@@ -362,9 +363,23 @@ class V2ConfigurationSystem {
         const json = JSON.stringify(config.configuration, null, '  ');
         this.#elementJSON.value = json;
         this.#parse();
-      };
 
-      reader.readAsText(input.files[0]);
+      } catch (error) {
+        this.#notify.warn('Unable to parse JSON from file');
+      }
+    };
+
+    reader.readAsText(file);
+  }
+
+  // Load a JSON file into the text field.
+  #openFile() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.txt,.conf';
+
+    input.addEventListener('change', () => {
+      this.#readFile(input.files[0]);
     }, false);
 
     input.click();
@@ -383,13 +398,10 @@ class V2ConfigurationSystem {
         'configuration': data
       });
 
-      this.#device.setEnabled(false);
-
       this.#timeout = setTimeout(() => {
         this.#timeout = null;
         this.#notify.error('No reply from device. Configuration might not be not saved.');
         this.#device.printDevice('No reply from device');
-        this.#device.setEnabled(true);
       }, 1000);
     }
   }

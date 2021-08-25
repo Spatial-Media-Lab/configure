@@ -42,14 +42,21 @@ class V2Web {
     });
   }
 
-  static addNavigation(title, target) {
+  static addNavigation(id, title, target) {
     const navbar = document.querySelector('.navbar-start');
 
     this.addElement(navbar, 'a', (e) => {
+      e.id = 'navigation-' + id;
       e.classList.add('navbar-item');
-      e.setAttribute('href', target);
+      e.href = target;
       e.textContent = title;
     });
+  }
+
+  static removeNavigation(id) {
+    const e = document.querySelector('#navigation-' + id);
+    if (e)
+      e.remove();
   }
 
   static addElement(element, type, handler) {
@@ -66,6 +73,50 @@ class V2Web {
       handler(e);
 
     element.insertAdjacentElement('afterend', e);
+  }
+
+  static addFileDrop(element, area, attributes, handler) {
+    area.addEventListener('dragenter', (event) => {
+      for (const attribute of attributes)
+        element.classList.add(attribute);
+
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    area.addEventListener('dragleave', (event) => {
+      if (event.currentTarget.contains(event.relatedTarget))
+        return;
+
+      for (const attribute of attributes)
+        element.classList.remove(attribute);
+
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    area.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+
+    area.addEventListener('drop', (event) => {
+      for (const attribute of attributes)
+        element.classList.remove(attribute);
+
+      event.preventDefault();
+      event.stopPropagation();
+      if (!event.dataTransfer.items)
+        return;
+
+      for (const file of event.dataTransfer.items) {
+        if (event.dataTransfer.items[0].kind != 'file')
+          continue;
+
+        if (!handler(file.getAsFile()))
+          break;
+      }
+    });
   }
 }
 
@@ -92,6 +143,8 @@ class V2WebNotify {
         this.#elementText = e;
       });
     });
+
+    return Object.seal(this);
   }
 
   clear(text) {
@@ -144,6 +197,8 @@ class V2WebField {
       if (handler)
         handler(this, e);
     });
+
+    return Object.seal(this);
   }
 
   addElement(element, handler) {
@@ -186,21 +241,25 @@ class V2WebTabs {
   #notifiers = [];
 
   constructor(element, handler) {
-    this.#element = element;
+    V2Web.addElement(element, 'div', (tabs) => {
+      this.#element = tabs;
 
-    V2Web.addElement(element, 'div', (e) => {
-      e.classList.add('tabs');
-      e.classList.add('is-centered');
-      e.classList.add('is-fullwidth');
-      e.classList.add('is-boxed');
+      V2Web.addElement(tabs, 'div', (e) => {
+        e.classList.add('tabs');
+        e.classList.add('is-centered');
+        e.classList.add('is-fullwidth');
+        e.classList.add('is-boxed');
 
-      V2Web.addElement(e, 'ul', (ul) => {
-        this.#elementsTabs = ul;
+        V2Web.addElement(e, 'ul', (ul) => {
+          this.#elementsTabs = ul;
+        });
       });
     });
 
     if (handler)
-      handler(this);
+      handler(this, this.#element);
+
+    return Object.seal(this);
   }
 
   addNotifier(handler) {
@@ -259,6 +318,10 @@ class V2WebTabs {
     while (canvas.firstChild)
       canvas.firstChild.remove();
   }
+
+  remove() {
+    this.#element.remove();
+  }
 }
 
 class V2WebModule {
@@ -273,13 +336,13 @@ class V2WebModule {
     this.#title = title;
 
     this.#section = document.createElement('section');
-    if (this.#id)
+    if (this.#id != null)
       this.#section.id = id;
 
     V2Web.addElement(this.#section, 'div', (container) => {
       container.classList.add('container');
 
-      if (title) {
+      if (title != null) {
         V2Web.addElement(container, 'h2', (e) => {
           e.classList.add('title');
           e.textContent = title;
@@ -295,13 +358,16 @@ class V2WebModule {
         this.canvas = e;
       });
     });
+
+    return Object.seal(this);
   }
 
-  // Separate attach() to allow early initialization, but allow control over the
-  // order of appearance of the modules.
   attach() {
+    if (this.#section.parentNode)
+      return;
+
     if (this.#id)
-      V2Web.addNavigation(this.#title, '#' + this.#id);
+      V2Web.addNavigation(this.#id, this.#title, '#' + this.#id);
 
     document.body.appendChild(this.#section);
   }
@@ -310,5 +376,29 @@ class V2WebModule {
   reset() {
     while (this.canvas.firstChild)
       this.canvas.firstChild.remove();
+  }
+
+  detach() {
+    if (!this.#section.parentNode)
+      return;
+
+    if (this.#id)
+      V2Web.removeNavigation(this.#id);
+
+    this.#section.remove();
+  }
+
+  show() {
+    if (this.#id)
+      V2Web.addNavigation(this.#id, this.#title, '#' + this.#id);
+
+    this.#section.style.display = '';
+  }
+
+  hide() {
+    if (this.#id)
+      V2Web.removeNavigation(this.#id);
+
+    this.#section.style.display = 'none';
   }
 }

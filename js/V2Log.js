@@ -37,6 +37,8 @@ class V2Log extends V2WebModule {
       e.classList.add('content');
       e.classList.add('is-small');
     });
+
+    return Object.seal(this);
   }
 
   print(line) {
@@ -59,7 +61,7 @@ class V2Log extends V2WebModule {
   }
 
   setup(device) {
-    super.attach();
+    this.attach();
     this.#device = device;
   }
 

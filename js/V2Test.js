@@ -29,16 +29,13 @@ class V2Test extends V2WebModule {
     let json = null;
 
     super('test', 'Test', 'Send generic MIDI messages');
-    super.attach();
     this.#device = device;
 
     new V2WebField(this.canvas, (field) => {
       field.addButton((e) => {
         e.classList.add('width-label');
-        e.classList.add('isEnabled');
         e.textContent = 'Note On';
         e.title = 'Send a NoteOn message';
-        e.disabled = true;
         e.addEventListener('click', () => {
           this.#device.sendNote(note.channel.value - 1, note.note.value, note.velocity.value);
         });
@@ -91,10 +88,8 @@ class V2Test extends V2WebModule {
     new V2WebField(this.canvas, (field) => {
       field.addButton((e) => {
         e.classList.add('width-label');
-        e.classList.add('isEnabled');
         e.textContent = 'Note Off';
         e.title = 'Send a NoteOff message';
-        e.disabled = true;
         e.addEventListener('click', () => {
           this.#device.sendNoteOff(noteOff.channel.value - 1, noteOff.note.value, noteOff.velocity.value);
         });
@@ -131,10 +126,8 @@ class V2Test extends V2WebModule {
     new V2WebField(this.canvas, (field) => {
       field.addButton((e) => {
         e.classList.add('width-label');
-        e.classList.add('isEnabled');
         e.textContent = 'Program';
         e.title = 'Send a Program Change Message';
-        e.disabled = true;
         e.addEventListener('click', () => {
           this.#device.sendProgramChange(program.channel.value - 1, program.number.value - 1);
         });
@@ -162,10 +155,8 @@ class V2Test extends V2WebModule {
     new V2WebField(this.canvas, (field) => {
       field.addButton((e) => {
         e.classList.add('width-label');
-        e.classList.add('isEnabled');
         e.textContent = 'Controller';
         e.title = 'Send a Control Change Message (CC)';
-        e.disabled = true;
         e.addEventListener('click', () => {
           this.#device.sendControlChange(control.channel.value - 1, control.controller.value, control.value.value);
         });
@@ -202,10 +193,8 @@ class V2Test extends V2WebModule {
     new V2WebField(this.canvas, (field) => {
       field.addButton((e) => {
         e.classList.add('width-label');
-        e.classList.add('isEnabled');
         e.textContent = 'JSON';
         e.title = 'Send a System Exclusive JSON message';
-        e.disabled = true;
         e.addEventListener('click', () => {
           this.#device.sendJSON(json.value);
         });
@@ -218,5 +207,15 @@ class V2Test extends V2WebModule {
         e.value = '{}';
       });
     });
-  };
+
+    this.#device.addNotifier('show', (data) => {
+      this.attach();
+    });
+
+    this.#device.addNotifier('reset', () => {
+      this.detach();
+    });
+
+    return Object.seal(this);
+  }
 }

@@ -15,7 +15,6 @@ class V2MIDISelect {
     V2Web.addElement(canvas, 'div', (e) => {
       this.#element = e;
       e.classList.add('select');
-      e.classList.add('mb-4');
 
       V2Web.addElement(e, 'select', (select) => {
         this.#select = select;
@@ -41,6 +40,8 @@ class V2MIDISelect {
       if (handler)
         handler(e);
     });
+
+    return Object.seal(this);
   }
 
   update(devices) {

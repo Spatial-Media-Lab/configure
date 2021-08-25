@@ -8,7 +8,6 @@ class V2Debug extends V2WebModule {
 
   constructor(device) {
     super('debug', 'Debug', 'Show the last reply');
-    super.attach();
     this.#device = device;
 
     new V2WebField(this.canvas, (field) => {
@@ -35,5 +34,15 @@ class V2Debug extends V2WebModule {
     this.#device.addNotifier('reset', (data) => {
       this.#element.textContent = '';
     });
+
+    this.#device.addNotifier('show', (data) => {
+      this.attach();
+    });
+
+    this.#device.addNotifier('reset', () => {
+      this.detach();
+    });
+
+    return Object.seal(this);
   }
 }

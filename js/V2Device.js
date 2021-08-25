@@ -2,17 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 class V2Device extends V2WebModule {
-  // Device to hold MIDI ports and send and receives messages.
-  device = null;
-
-  // The current device information.
-  data = null;
-
   #log = null;
   #midi = null;
-  #sessionID = null;
   #bannerNotify = null;
   #select = null;
+  #device = null;
+  #data = null;
   #tabs = null;
   #info = null;
   #details = null;
@@ -38,9 +33,7 @@ class V2Device extends V2WebModule {
 
   constructor(log, connect) {
     super();
-    super.attach();
     this.#log = log;
-    this.#sessionID = Math.random().toString(36).substr(2, 6);
     this.#midi = new V2MIDI();
 
     this.#bannerNotify = new V2WebNotify(this.canvas);
@@ -60,37 +53,15 @@ class V2Device extends V2WebModule {
     // Focus the device selector when new devices arrive and we are
     // not currently connected.
     this.#select.addNotifier('add', () => {
-      if (this.device.input)
+      if (this.#device.input)
         return;
 
       this.#select.focus();
       window.scroll(0, 0);
     });
 
-    new V2WebTabs(this.canvas, (tabs) => {
-      this.#tabs = tabs;
-
-      tabs.addTab('information', 'Information', (e) => {
-        this.#info = e;
-      });
-
-      tabs.addTab('details', 'Details', (e) => {
-        this.#details = e;
-      });
-
-      tabs.addTab('update', 'Update', (e) => {
-        this.#update.element = e;
-      });
-
-      // Check for firmware updates when activating the tab.
-      tabs.addNotifier((name) => {
-        if (name == 'update')
-          this.#loadFirmwareIndex();
-      });
-    });
-
-    this.device = new V2MIDIDevice();
-    this.device.addNotifier('note', (channel, note, velocity) => {
+    this.#device = new V2MIDIDevice();
+    this.#device.addNotifier('note', (channel, note, velocity) => {
       if (velocity > 0)
         this.print('Received <b>NoteOn</b> <i>' +
           V2MIDI.Note.name(note) + '(' + note + ')</i> with velocity ' + velocity + ' on channel <i>#' + (channel + 1)) + '</i>';
@@ -100,25 +71,25 @@ class V2Device extends V2WebModule {
           V2MIDI.Note.name(note) + '(' + note + ')</i> on channel #' + (channel + 1));
     });
 
-    this.device.addNotifier('noteOff', (channel, note, velocity) => {
+    this.#device.addNotifier('noteOff', (channel, note, velocity) => {
       this.print('Received <b>NoteOff</b> <i>' +
         V2MIDI.Note.name(note) + '(' + note + ')</i> with velocity ' + velocity + ' on channel #' + (channel + 1));
     });
 
-    this.device.addNotifier('aftertouch', (channel, note, pressure) => {
+    this.#device.addNotifier('aftertouch', (channel, note, pressure) => {
       this.print('Received <b>Aftertouch</b> for note <i>' + V2MIDI.Note.name(note) + '(' + note + ')</i>' + ' with pressure <i>' + pressure + '</i> on channel <i>#' + (channel + 1) + '</i>');
     });
 
-    this.device.addNotifier('controlChange', (channel, controller, value) => {
+    this.#device.addNotifier('controlChange', (channel, controller, value) => {
       this.print('Received <b>ControlChange</b> <i>' + controller +
         '</i> with value <i>' + value + '</i> on channel <i>#' + (channel + 1) + '</i>');
     });
 
-    this.device.addNotifier('aftertouchChannel', (pressure) => {
+    this.#device.addNotifier('aftertouchChannel', (pressure) => {
       this.print('Received <b>Aftertouch Channel</b> with value <i>' + value + '</i> on channel <i>#' + (channel + 1) + '</i>');
     });
 
-    this.device.addNotifier('systemExclusive', (message) => {
+    this.#device.addNotifier('systemExclusive', (message) => {
       this.printDevice('Received <b>SystemExclusive</b> length=' + message.length);
 
       const json = new TextDecoder().decode(message);
@@ -161,7 +132,7 @@ class V2Device extends V2WebModule {
           this.#log.print('<b>' + event.port.name + '</b> (–, ' + event.port.id + '): Port is ' + event.port.state);
 
         // Disconnect if the current device is unplugged.
-        if (this.device.input == event.port && event.port.state == 'disconnected')
+        if (this.#device.input == event.port && event.port.state == 'disconnected')
           this.disconnect();
 
         this.#select.update(this.#midi.getDevices('both'));
@@ -200,6 +171,9 @@ class V2Device extends V2WebModule {
         }
       }
     });
+
+    this.attach();
+    return Object.seal(this);
   }
 
   addNotifier(type, handler) {
@@ -207,18 +181,26 @@ class V2Device extends V2WebModule {
   }
 
   print(line) {
-    this.#log.print('<b>' + this.device.input.name + '</b>: ' + line);
+    this.#log.print('<b>' + this.#device.input.name + '</b>: ' + line);
+  }
+
+  getData() {
+    return this.#data;
+  }
+
+  getDevice() {
+    return this.#device;
   }
 
   printDevice(line) {
-    this.#log.print('<b>' + this.device.input.name + '</b> (' + this.device.input.id + ', ' + this.device.output.id + '): ' + line);
+    this.#log.print('<b>' + this.#device.input.name + '</b> (' + this.#device.input.id + ', ' + this.#device.output.id + '): ' + line);
   }
 
   // Print available MIDI ports. Their names might be different on different
   // operating systems.
   printStatus() {
     for (const device of this.#midi.getDevices().values()) {
-      let what = (device.in && device.in == this.device.input) ? 'Connected to' : 'Found';
+      let what = (device.in && device.in == this.#device.input) ? 'Connected to' : 'Found';
       if (device.in && device.out)
         this.#log.print(what + ' <b>' + device.in.name + '</b> (' + device.in.id + ', ' + device.out.id + ')');
 
@@ -228,12 +210,6 @@ class V2Device extends V2WebModule {
       else if (device.out)
         this.#log.print(what + ' <b>' + device.out.name + '</b> (–, ' + device.out.id + ')');
     }
-  }
-
-  // Dim UI elements when no device is connected, or an action waits for a reply.
-  setEnabled(enabled) {
-    for (const e of document.querySelectorAll('.isEnabled'))
-      e.disabled = !enabled;
   }
 
   sendJSON(json) {
@@ -268,7 +244,7 @@ class V2Device extends V2WebModule {
   }
 
   #disconnectDevice() {
-    if (!this.device.input)
+    if (!this.#device.input)
       return;
 
     this.printDevice('Disconnecting');
@@ -278,9 +254,8 @@ class V2Device extends V2WebModule {
       this.#timeout = null;
     }
 
-    this.device.disconnect();
+    this.#device.disconnect();
     this.#token = null;
-    this.#tabs.switchTab();
     this.#clear();
 
     for (const notifier of this.#notifiers.reset)
@@ -293,7 +268,6 @@ class V2Device extends V2WebModule {
   disconnect() {
     this.#disconnectDevice();
     this.#select.setDisconnected();
-    this.setEnabled(false);
   }
 
   sendReset() {
@@ -313,7 +287,7 @@ class V2Device extends V2WebModule {
   // cables to access children devices. The device can describe itself
   // how many children devices are expected to be connected.
   rebootWithPorts() {
-    let ports = this.data.system.ports.announce;
+    let ports = this.#data.system.ports.announce;
 
     // Ports enabled but no custom number of ports specified, use the maximum.
     if (ports == 1)
@@ -330,54 +304,83 @@ class V2Device extends V2WebModule {
   }
 
   sendNote(channel, note, velocity) {
-    this.device.sendNote(channel, note, velocity);
+    this.#device.sendNote(channel, note, velocity);
     this.print('Sending <b>NoteOn</b> <i>#' + note +
       '</i> with velocity <i>' + velocity + '</i> on channel <i>#' + (channel + 1) + '</i>');
   }
 
   sendNoteOff(channel, note, velocity) {
-    this.device.sendNoteOff(channel, note, velocity);
+    this.#device.sendNoteOff(channel, note, velocity);
     this.print('Sending <b>NoteOff</b> <i>#' + note +
       '</i> with velocity <i>' + (velocity || 64) + '</i> on channel <i>#' + (channel + 1) + '</i>');
   }
 
   sendControlChange(channel, controller, value) {
-    this.device.sendControlChange(channel, controller, value);
+    this.#device.sendControlChange(channel, controller, value);
     this.print('Sending <b>Control Change</b> <i>#' + controller +
       '</i> with value <i>' + value + '</i> on channel <i>#' + (channel + 1) + '</i>');
   }
 
   sendProgramChange(channel, value) {
-    this.device.sendProgramChange(channel, value);
+    this.#device.sendProgramChange(channel, value);
     this.print('Sending <b>Program Change</b> <i>#' + (value + 1) +
       '</i> on channel <i>#' + (channel + 1) + '</i>');
   }
 
   sendAftertouchChannel(channel, value) {
-    this.device.sendAftertouchChannel(channel, value);
+    this.#device.sendAftertouchChannel(channel, value);
     this.print('Sending <b>Aftertouch Channel</b> <i>#' + value +
       '</i> on channel <i>#' + (channel + 1) + '</i>');
   }
 
   sendPitchBend(channel, value) {
-    this.device.sendPitchBend(channel, value);
+    this.#device.sendPitchBend(channel, value);
     this.print('Sending <b>Pitch Bend</b> <i>#' + value +
       '</i> on channel <i>#' + (channel + 1) + '</i>');
   }
 
   sendSystemReset() {
-    this.device.sendSystemReset();
+    this.#device.sendSystemReset();
     this.print('Sending <b>SystemReset</b>');
   }
 
   sendSystemExclusive(message) {
-    const length = this.device.sendSystemExclusive(message);
+    const length = this.#device.sendSystemExclusive(message);
     this.printDevice('Sending <b>SystemExclusive</b> length=' + length);
   }
 
   #show(data) {
-    this.#clear();
-    this.data = data;
+    this.#data = data;
+
+    if (!this.#tabs) {
+      new V2WebTabs(this.canvas, (tabs, element) => {
+        this.#tabs = tabs;
+        element.classList.add('mt-4');
+
+        tabs.addTab('information', 'Information', (e) => {
+          this.#info = e;
+        });
+
+        tabs.addTab('details', 'Details', (e) => {
+          this.#details = e;
+        });
+
+        tabs.addTab('update', 'Update', (e) => {
+          this.#update.element = e;
+        });
+
+        // Check for firmware updates when activating the tab.
+        tabs.addNotifier((name) => {
+          if (name == 'update')
+            this.#loadFirmwareIndex();
+        });
+      });
+
+    } else {
+      this.#tabs.resetTab('information');
+      this.#tabs.resetTab('details');
+      this.#tabs.resetTab('update');
+    }
 
     // The Information tab.
     V2Web.addElement(this.#info, 'div', (container) => {
@@ -386,7 +389,7 @@ class V2Device extends V2WebModule {
       V2Web.addElement(container, 'table', (e) => {
         e.classList.add('table');
         e.classList.add('is-fullwidth');
-        e.classList.add('istriped');
+        e.classList.add('is-striped');
         e.classList.add('is-narrow');
 
         V2Web.addElement(e, 'tbody', (body) => {
@@ -402,8 +405,8 @@ class V2Device extends V2WebModule {
               V2Web.addElement(row, 'td', (e) => {
                 if (typeof value == 'string' && value.match(/^https?:\/\//)) {
                   V2Web.addElement(e, 'a', (a) => {
-                    a.setAttribute('href', value);
-                    a.setAttribute('target', 'home');
+                    a.href = value;
+                    a.target = 'home';
                     a.textContent = value.replace(/^https?:\/\//, '');
                   });
                 } else
@@ -433,7 +436,7 @@ class V2Device extends V2WebModule {
       V2Web.addElement(container, 'table', (e) => {
         e.classList.add('table');
         e.classList.add('is-fullwidth');
-        e.classList.add('istriped');
+        e.classList.add('is-striped');
         e.classList.add('is-narrow');
 
         V2Web.addElement(e, 'tbody', (body) => {
@@ -483,7 +486,11 @@ class V2Device extends V2WebModule {
         e.textContent = 'Load';
         e.title = 'Load a firmware image';
         e.addEventListener('click', () => {
-          this.#loadFirmware();
+          this.#openFirmware();
+        });
+
+        V2Web.addFileDrop(e, this.#update.element, ['is-focused', 'is-link', 'is-light'], (file) => {
+          this.#readFirmware(file);
         });
       });
 
@@ -520,7 +527,7 @@ class V2Device extends V2WebModule {
       V2Web.addElement(e, 'table', (table) => {
         table.classList.add('table');
         table.classList.add('is-fullwidth');
-        table.classList.add('istriped');
+        table.classList.add('is-striped');
         table.classList.add('is-narrow');
 
         V2Web.addElement(table, 'tbody', (body) => {
@@ -529,7 +536,7 @@ class V2Device extends V2WebModule {
               e.textContent = 'Version';
             });
             V2Web.addElement(row, 'td', (e) => {
-              e.textContent = this.data.metadata.version;
+              e.textContent = this.#data.metadata.version;
             });
           });
 
@@ -538,7 +545,7 @@ class V2Device extends V2WebModule {
               e.textContent = 'Id';
             });
             V2Web.addElement(row, 'td', (e) => {
-              e.textContent = this.data.system.firmware.id;
+              e.textContent = this.#data.system.firmware.id;
             });
           });
 
@@ -547,7 +554,7 @@ class V2Device extends V2WebModule {
               e.textContent = 'Board';
             });
             V2Web.addElement(row, 'td', (e) => {
-              e.textContent = this.data.system.firmware.board;
+              e.textContent = this.#data.system.firmware.board;
             });
           });
 
@@ -556,7 +563,7 @@ class V2Device extends V2WebModule {
               e.textContent = 'Hash';
             });
             V2Web.addElement(row, 'td', (e) => {
-              e.textContent = this.data.system.firmware.hash;
+              e.textContent = this.#data.system.firmware.hash;
             });
           });
         });
@@ -577,12 +584,12 @@ class V2Device extends V2WebModule {
       this.#timeout = null;
     }
 
-    this.data = null;
+    if (!this.#data)
+      return;
 
-    this.#tabs.resetTab('information');
-    this.#tabs.resetTab('details');
-    this.#tabs.resetTab('update');
-
+    this.#data = null;
+    this.#tabs.remove();
+    this.#tabs = null;
     this.#update.firmware.bytes = null;
     this.#update.firmware.hash = null;
   }
@@ -612,16 +619,20 @@ class V2Device extends V2WebModule {
     }
 
     // If this is the first reply, update the interface;
-    if (!this.data) {
+    if (!this.#data) {
       this.printDevice('Device is connected');
       this.#select.setConnected();
-      this.setEnabled(true);
     }
 
     this.#show(data);
 
+    // Detach the Log sectiona and attach it again after all other sections.
+    this.#log.detach();
+
     for (const notifier of this.#notifiers.show)
       notifier(data);
+
+    this.#log.attach();
   }
 
   // Connect or switch to a device.
@@ -645,11 +656,11 @@ class V2Device extends V2WebModule {
           return;
 
         // We have input and output.
-        this.device.input = device.in;
-        this.device.output = device.out;
+        this.#device.input = device.in;
+        this.#device.output = device.out;
 
         // Dispatch incoming messages to V2MIDIDevice.
-        this.device.input.onmidimessage = this.device.handleMessage.bind(this.device);
+        this.#device.input.onmidimessage = this.#device.handleMessage.bind(this.#device);
 
         // Request information from device.
         this.printDevice('Device is ready');
@@ -668,93 +679,93 @@ class V2Device extends V2WebModule {
 
   // Load 'index.json' and from the 'download' URL and check if there is a firmware update available.
   #loadFirmwareIndex() {
-    if (!this.data.system || !this.data.system.firmware.download)
+    if (!this.#data.system || !this.#data.system.firmware.download)
       return;
 
     if (this.#update.firmware.bytes)
       return;
 
-    this.printDevice('Downloading firmware update index: <b>' + this.data.system.firmware.download + '/index.json</b>');
-    const request = new XMLHttpRequest();
-    request.onreadystatechange = () => {
-      let index;
+    this.printDevice('Requesting firmware information: <b>' + this.#data.system.firmware.download + '/index.json</b>');
 
-      if (request.readyState == 4 && request.status == 200) {
-        try {
-          index = JSON.parse(request.responseText);
+    fetch(this.#data.system.firmware.download + '/index.json', {
+        cache: 'no-cache'
+      })
+      .then((response) => {
+        if (!response.ok)
+          throw new Error('Status=' + response.status);
 
-        } catch (error) {
-          this.printDevice('Unable to parse firmware update index: <b>' + this.data.system.firmware.download + '/index.json</b>');
-          return;
-        }
-
+        return response.json();
+      })
+      .then((json) => {
         this.printDevice('Retrieved firmware update index');
 
-        const update = index[this.data.system.firmware.id];
+        const update = json[this.#data.system.firmware.id];
         if (!update) {
           this.printDevice('No firmware update found for this device.');
           return;
         }
 
-        if (this.data.system.board != update.board) {
+        if (this.#data.system.board != update.board) {
           this.printDevice('No firmware update found for this board.');
           return;
         }
 
-        if (this.data.system.firmware.hash == update.hash) {
+        if (this.#data.system.firmware.hash == update.hash) {
           this.#update.notify.success('The firmware is up-to-date.');
           return;
         }
 
-        if (this.data.system.firmware.version > update.version) {
+        if (this.#data.system.firmware.version > update.version) {
           this.#update.notify.warn('A more recent firmware is already installed.');
           return;
         }
 
-        this.printDevice('Downloading firmware update: <b>' + update.file + '</b>');
-        const firmware = new XMLHttpRequest();
-        firmware.onreadystatechange = () => {
-          if (firmware.readyState == 4) { // DONE
-            if (firmware.status == 200) {
-              const bytes = firmware.response;
-              this.printDevice('Retrieved firmware image, length=' + bytes.byteLength);
-              this.#showFirmware(new Uint8Array(bytes));
+        this.printDevice('Requesting firmware image: <b>' + this.#data.system.firmware.download + '/' + update.file + '</b>');
 
-            } else
-              this.printDevice('Failed to download firmware image: ' + firmware.status);
-          }
-        }
+        fetch(this.#data.system.firmware.download + '/' + update.file, {
+            cache: 'no-cache'
+          })
+          .then((response) => {
+            if (!response.ok)
+              throw new Error('Status=' + response.status);
 
-        firmware.open('GET', this.data.system.firmware.download + '/' + update.file, true);
-        firmware.responseType = 'arraybuffer';
-        firmware.send();
-      }
-    };
+            return response.arrayBuffer();
+          })
+          .then((buffer) => {
+            this.printDevice('Retrieved firmware image, length=' + buffer.byteLength);
+            this.#showFirmware(new Uint8Array(buffer));
+          })
+          .catch((error) => {
+            this.printDevice('Error requesting firmware image: ' + error.message);
+          })
 
-    // Append the session ID to prevent the index file from being cached
-    // in the browser. Reloading the browser will create a new ID.
-    request.open('GET', this.data.system.firmware.download + '/index.json?s=' + this.#sessionID, true);
-    request.send();
+      })
+      .catch((error) => {
+        this.printDevice('Error requesting firmware information: ' + error.message);
+      })
+  }
+
+  #readFirmware(file) {
+    const reader = new FileReader();
+    reader.onload = (element) => {
+      this.#showFirmware(new Uint8Array(reader.result));
+    }
+
+    reader.readAsArrayBuffer(file);
   }
 
   // Load a firmware image from the local disk.
-  #loadFirmware() {
+  #openFirmware() {
     this.#update.firmware.bytes = null;
     this.#update.firmware.hash = null;
 
     // Temporarily create a hidden 'browse button' and trigger a file upload.
     const input = document.createElement('input');
-    input.setAttribute('type', 'file');
-    input.setAttribute('accept', '.bin');
-    input.style.display = 'none';
+    input.type = 'file';
+    input.accept = '.bin';
 
     input.addEventListener('change', () => {
-      const reader = new FileReader();
-      reader.onload = (element) => {
-        this.#showFirmware(new Uint8Array(reader.result));
-      }
-
-      reader.readAsArrayBuffer(input.files[0]);
+      this.#readFirmware(input.files[0]);
     }, false);
 
     input.click();
@@ -810,7 +821,7 @@ class V2Device extends V2WebModule {
       V2Web.addElement(e, 'table', (table) => {
         table.classList.add('table');
         table.classList.add('is-fullwidth');
-        table.classList.add('istriped');
+        table.classList.add('is-striped');
         table.classList.add('is-narrow');
 
         V2Web.addElement(table, 'tbody', (body) => {
@@ -861,16 +872,16 @@ class V2Device extends V2WebModule {
       this.#update.firmware.hash = hex;
       elementHash.textContent = hex;
 
-      if (this.data.system.board && meta.board != this.data.system.board)
+      if (this.#data.system.board && meta.board != this.#data.system.board)
         this.#update.notify.error('The firmware update is for a different board which has the name <b>' + meta.board + '</>.');
 
-      else if (meta.id != this.data.system.firmware.id)
+      else if (meta.id != this.#data.system.firmware.id)
         this.#update.notify.warn('The firmware update appears to provide a different functionality, it has the name <b>' + meta.id + '</>.');
 
-      else if (meta.version < this.data.metadata.version)
+      else if (meta.version < this.#data.metadata.version)
         this.#update.notify.warn('The firmware update is version <b>' + meta.version + '</b>, which is older than the current firmware.');
 
-      else if (this.#update.firmware.hash == this.data.system.firmware.hash)
+      else if (this.#update.firmware.hash == this.#data.system.firmware.hash)
         this.#update.notify.success('The firmware is up-to-date.');
 
       else

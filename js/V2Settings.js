@@ -10,6 +10,8 @@ class V2SettingsModule {
     this.device = device;
     this.settings = settings;
     this.setting = setting;
+
+    return Object.seal(this);
   }
 
   addTitle(canvas, text) {
@@ -85,12 +87,15 @@ class V2SettingsCalibration extends V2SettingsModule {
 
   #device = null;
   #settings = null;
-  #program = 0;
+  #currentProgram = Object.seal({
+    bank: 0,
+    number: 0
+  });
   #values = null;
   #playTimer = null;
   #notes = Object.seal({
     element: null,
-    channel: 0,
+    bank: 0,
     program: 0
   });
 
@@ -103,22 +108,62 @@ class V2SettingsCalibration extends V2SettingsModule {
       if (!program.selected)
         return false;
 
-      this.#program = program.number;
+      this.#currentProgram.bank = program.bank;
+      this.#currentProgram.number = program.number;
       return true;
     });
 
-    if (setting.channel != null)
-      this.#notes.channel = setting.channel;
+    if (setting.program != null) {
+      this.#notes.bank = setting.program.bank;
+      this.#notes.program = setting.program.number;
+    }
 
-    if (setting.program != null)
-      this.#notes.program = setting.program;
+    const changeProgram = (program, bank) => {
+      const msb = (bank >> 7) & 0x7f;
+      const lsb = bank & 0x7f;
+      this.device.sendControlChange(0, V2MIDI.CC.bankSelect, msb);
+      this.device.sendControlChange(0, V2MIDI.CC.bankSelectLSB, lsb);
+      this.device.sendProgramChange(0, program);
+    };
+
+    const playAll = (field) => {
+      const reset = () => {
+        clearInterval(this.#playTimer);
+        this.#playTimer = null;
+        changeProgram(this.#currentProgram.number, this.#currentProgram.bank);
+      }
+
+      if (this.#playTimer) {
+        reset();
+        return;
+      }
+
+      changeProgram(this.#notes.program, this.#notes.bank);
+
+      let index = 0;
+      this.#playTimer = setInterval(() => {
+        const note = index + this.setting.chromatic.start;
+        const velocity = this.#values[index][field];
+        this.device.sendNote(0, note, velocity);
+
+        index++;
+        if (index == this.#values.length)
+          reset();
+      }, 150);
+    }
+
+    const playNote = (note, velocity) => {
+      changeProgram(this.#notes.program, this.#notes.bank);
+      this.device.sendNote(0, note, velocity);
+      changeProgram(this.#currentProgram.number, this.#currentProgram.bank);
+    }
 
     new V2WebField(canvas, (field) => {
       field.addButton((e) => {
         e.textContent = 'Play Min';
         e.title = 'Play all notes with velocity 1';
         e.addEventListener('click', () => {
-          this.#playAll('min');
+          playAll('min');
         });
       });
 
@@ -126,7 +171,7 @@ class V2SettingsCalibration extends V2SettingsModule {
         e.textContent = 'Play Max';
         e.title = 'Play all notes with velocity 127';
         e.addEventListener('click', () => {
-          this.#playAll('max');
+          playAll('max');
         });
       });
     });
@@ -145,9 +190,7 @@ class V2SettingsCalibration extends V2SettingsModule {
           e.title = 'Play note #' + note + ' with velocity 1';
           e.textContent = 'Min';
           e.addEventListener('mousedown', () => {
-            this.device.sendProgramChange(this.#notes.channel, this.#notes.program);
-            this.device.sendNote(this.#notes.channel, note, this.#values[i].min);
-            this.device.sendProgramChange(this.#notes.channel, this.#program);
+            playNote(note, this.#values[i].min);
           });
         });
 
@@ -159,9 +202,7 @@ class V2SettingsCalibration extends V2SettingsModule {
           e.value = this.#values[i].min;
           e.addEventListener('change', () => {
             this.#values[i].min = e.value
-            this.device.sendProgramChange(this.#notes.channel, this.#notes.program);
-            this.device.sendNote(this.#notes.channel, note, e.value);
-            this.device.sendProgramChange(this.#notes.channel, this.#program);
+            playNote(note, this.#values[i].min);
           });
         });
 
@@ -169,9 +210,7 @@ class V2SettingsCalibration extends V2SettingsModule {
           e.title = 'Play note #' + note + ' with velocity 127';
           e.textContent = 'Max';
           e.addEventListener('mousedown', () => {
-            this.device.sendProgramChange(this.#notes.channel, this.#notes.program);
-            this.device.sendNote(this.#notes.channel, note, this.#values[i].max);
-            this.device.sendProgramChange(this.#notes.channel, this.#program);
+            playNote(note, this.#values[i].max);
           });
         });
 
@@ -183,9 +222,7 @@ class V2SettingsCalibration extends V2SettingsModule {
           e.value = this.#values[i].max;
           e.addEventListener('change', () => {
             this.#values[i].max = e.value;
-            this.device.sendProgramChange(this.#notes.channel, this.#notes.program);
-            this.device.sendNote(this.#notes.channel, note, e.value);
-            this.device.sendProgramChange(this.#notes.channel, this.#program);
+            playNote(note, this.#values[i].max);
           });
         });
       });
@@ -202,6 +239,8 @@ class V2SettingsCalibration extends V2SettingsModule {
 
     for (let i = 0; i < this.setting.chromatic.count; i++)
       addCalibrationNote(i, this.setting.chromatic.start + i);
+
+    return Object.seal(this);
   }
 
   save(configuration) {
@@ -214,44 +253,18 @@ class V2SettingsCalibration extends V2SettingsModule {
       this.#playTimer = null;
     }
   }
-
-  #playAll(field) {
-    const reset = () => {
-      clearInterval(this.#playTimer);
-      this.#playTimer = null;
-      this.device.sendProgramChange(this.#notes.channel, this.#program);
-    }
-
-    if (this.#playTimer) {
-      reset();
-      return;
-    }
-
-    this.device.sendProgramChange(this.#notes.channel, this.#notes.program);
-
-    let index = 0;
-    this.#playTimer = setInterval(() => {
-      const note = index + this.setting.chromatic.start;
-      const velocity = this.#values[index][field];
-      this.device.sendNote(this.#notes.channel, note, velocity);
-
-      index++;
-      if (index == this.#values.length)
-        reset();
-    }, 150);
-  }
 }
 
 // HSV Color configuration.
 class V2SettingsColor extends V2SettingsModule {
   static type = 'color';
 
-  #color = {
+  #color = Object.seal({
     element: null,
     h: 0,
     s: 0,
     v: 0
-  };
+  });
   #hue = null;
   #saturation = null;
   #brightness = null;
@@ -428,6 +441,8 @@ class V2SettingsColor extends V2SettingsModule {
 
       update(this.getConfiguration(data.configuration)[2]);
     }
+
+    return Object.seal(this);
   }
 
   save(configuration) {
@@ -443,9 +458,9 @@ class V2SettingsColor extends V2SettingsModule {
 class V2SettingsController extends V2SettingsModule {
   static type = 'controller';
 
-  #controller = {
+  #controller = Object.seal({
     element: null,
-  };
+  });
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
@@ -505,6 +520,7 @@ class V2SettingsController extends V2SettingsModule {
     });
 
     update(this.getConfiguration(data.configuration));
+    return Object.seal(this);
   }
 
   save(configuration) {
@@ -686,6 +702,8 @@ class V2SettingsDrum extends V2SettingsModule {
         });
       });
     }
+
+    return Object.seal(this);
   }
 
   save(configuration) {
@@ -707,9 +725,9 @@ class V2SettingsDrum extends V2SettingsModule {
 class V2SettingsMIDI extends V2SettingsModule {
   static type = 'midi';
 
-  #channel = {
+  #channel = Object.seal({
     element: null
-  };
+  });
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
@@ -745,6 +763,8 @@ class V2SettingsMIDI extends V2SettingsModule {
         });
       });
     });
+
+    return Object.seal(this);
   }
 
   save(configuration) {
@@ -779,6 +799,8 @@ class V2SettingsText extends V2SettingsModule {
         e.value = this.getConfiguration(data.configuration);
       });
     });
+
+    return Object.seal(this);
   }
 
   save(configuration) {
@@ -849,6 +871,8 @@ class V2SettingsUSB extends V2SettingsModule {
         });
       });
     }
+
+    return Object.seal(this);
   }
 
   save(configuration) {
