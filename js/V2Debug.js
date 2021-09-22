@@ -10,10 +10,9 @@ class V2Debug extends V2WebModule {
     super('debug', 'Debug', 'Show the last reply');
     this.#device = device;
 
-    new V2WebField(this.canvas, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(this.canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Copy';
-        e.title = 'Copy to clipboard';
         e.addEventListener('click', () => {
           navigator.clipboard.writeText(this.#element.textContent);
         });

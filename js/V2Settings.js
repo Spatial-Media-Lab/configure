@@ -25,6 +25,10 @@ class V2SettingsModule {
   getConfiguration(data) {
     const configuration = this.setting.configuration;
 
+    // configuration.devices[3].count[0]
+    if (configuration.element != null && configuration.index != null && configuration.field)
+      return data[configuration.path][configuration.index][configuration.field][configuration.element];
+
     // configuration.devices[3].count
     if (configuration.index != null && configuration.field)
       return data[configuration.path][configuration.index][configuration.field];
@@ -43,6 +47,21 @@ class V2SettingsModule {
 
   setConfiguration(data, value) {
     const configuration = this.setting.configuration;
+
+    // configuration.devices[3].count[0]
+    if (configuration.element != null && configuration.index != null && configuration.field) {
+      if (!data[configuration.path])
+        data[configuration.path] = [];
+
+      if (!data[configuration.path][configuration.index])
+        data[configuration.path][configuration.index] = {};
+
+      if (!data[configuration.path][configuration.index][configuration.field])
+        data[configuration.path][configuration.index][configuration.field] = [];
+
+      data[configuration.path][configuration.index][configuration.field][configuration.element] = value;
+      return;
+    }
 
     // configuration.devices[3].count
     if (configuration.index != null && configuration.field) {
@@ -158,18 +177,16 @@ class V2SettingsCalibration extends V2SettingsModule {
       changeProgram(this.#currentProgram.number, this.#currentProgram.bank);
     }
 
-    new V2WebField(canvas, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Play Min';
-        e.title = 'Play all notes with velocity 1';
         e.addEventListener('click', () => {
           playAll('min');
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Play Max';
-        e.title = 'Play all notes with velocity 127';
         e.addEventListener('click', () => {
           playAll('max');
         });
@@ -187,7 +204,6 @@ class V2SettingsCalibration extends V2SettingsModule {
         });
 
         field.addButton((e) => {
-          e.title = 'Play note #' + note + ' with velocity 1';
           e.textContent = 'Min';
           e.addEventListener('mousedown', () => {
             playNote(note, this.#values[i].min);
@@ -196,7 +212,6 @@ class V2SettingsCalibration extends V2SettingsModule {
 
         field.addInput('number', (e) => {
           e.classList.add('width-number');
-          e.title = 'The raw value to play note #' + note + ' with velocity 1';
           e.min = 1;
           e.max = 127;
           e.value = this.#values[i].min;
@@ -207,7 +222,6 @@ class V2SettingsCalibration extends V2SettingsModule {
         });
 
         field.addButton((e) => {
-          e.title = 'Play note #' + note + ' with velocity 127';
           e.textContent = 'Max';
           e.addEventListener('mousedown', () => {
             playNote(note, this.#values[i].max);
@@ -216,7 +230,6 @@ class V2SettingsCalibration extends V2SettingsModule {
 
         field.addInput('number', (e) => {
           e.classList.add('width-number');
-          e.title = 'The raw value to play the note #' + note + ' with velocity 127';
           e.min = 1;
           e.max = 127;
           e.value = this.#values[i].max;
@@ -255,7 +268,7 @@ class V2SettingsCalibration extends V2SettingsModule {
   }
 }
 
-// HSV Color configuration.
+// HSV color configuration.
 class V2SettingsColor extends V2SettingsModule {
   static type = 'color';
 
@@ -286,8 +299,8 @@ class V2SettingsColor extends V2SettingsModule {
       super.addTitle(canvas, setting.title);
 
     this.#configuration = setting.configuration;
-    new V2WebField(canvas, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.classList.add('width-label');
         e.classList.add('has-background-grey-lighter');
         e.classList.add('inactive');
@@ -295,7 +308,7 @@ class V2SettingsColor extends V2SettingsModule {
         e.textContent = 'Color';
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         this.#color.element = e;
         e.classList.add('width-label');
         e.classList.add('inactive');
@@ -325,7 +338,6 @@ class V2SettingsColor extends V2SettingsModule {
         field.addInput('number', (e) => {
           this.#hue = e;
           e.classList.add('width-number');
-          e.title = 'The color';
           e.min = 0;
           e.max = 127;
           e.addEventListener('input', () => {
@@ -338,7 +350,6 @@ class V2SettingsColor extends V2SettingsModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.title = 'The color';
         e.min = 0;
         e.max = 127;
         e.addEventListener('input', () => {
@@ -371,7 +382,6 @@ class V2SettingsColor extends V2SettingsModule {
         field.addInput('number', (e) => {
           this.#saturation = e;
           e.classList.add('width-number');
-          e.title = 'The color saturation';
           e.min = 0;
           e.max = 127;
           e.addEventListener('input', () => {
@@ -384,7 +394,6 @@ class V2SettingsColor extends V2SettingsModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.title = 'The color saturation';
         e.min = 0;
         e.max = 127;
         e.addEventListener('input', () => {
@@ -417,7 +426,6 @@ class V2SettingsColor extends V2SettingsModule {
         field.addInput('number', (e) => {
           this.#brightness = e;
           e.classList.add('width-number');
-          e.title = 'The brightness';
           e.min = 0;
           e.max = 127;
           e.addEventListener('input', () => {
@@ -430,7 +438,6 @@ class V2SettingsColor extends V2SettingsModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.title = 'The brightness';
         e.min = 0;
         e.max = 127;
         e.value = this.#brightness.value;
@@ -467,12 +474,10 @@ class V2SettingsController extends V2SettingsModule {
     if (setting.title)
       super.addTitle(canvas, setting.title);
 
-    let controller = null;
     let text = null;
     let range = null;
 
     const update = (number) => {
-      controller.textContent = 'CC ' + number;
       text.textContent = V2MIDI.CC.Name[number] || 'Controller ' + number;
       this.#controller.element.value = number;
       range.value = number;
@@ -480,11 +485,11 @@ class V2SettingsController extends V2SettingsModule {
 
     new V2WebField(canvas, (field) => {
       field.addButton((e) => {
-        controller = e;
         e.classList.add('width-label');
         e.classList.add('has-background-grey-lighter');
         e.classList.add('inactive');
         e.tabIndex = -1;
+        e.textContent = 'CC';
       });
 
       field.addButton((e) => {
@@ -498,7 +503,6 @@ class V2SettingsController extends V2SettingsModule {
       field.addInput('number', (e) => {
         this.#controller.element = e;
         e.classList.add('width-number');
-        e.title = 'The controller number';
         e.min = 0;
         e.max = 127;
         e.addEventListener('input', () => {
@@ -511,7 +515,6 @@ class V2SettingsController extends V2SettingsModule {
       range = e;
       e.classList.add('range');
       e.type = 'range';
-      e.title = 'The controller number';
       e.min = 0;
       e.max = 127;
       e.addEventListener('input', () => {
@@ -543,28 +546,24 @@ class V2SettingsDrum extends V2SettingsModule {
 
     const drum = this.getConfiguration(data.configuration);
     if (drum.controller != null) {
-      let controller = null;
       let text = null;
       let range = null;
 
       const updateController = (number) => {
-        if (number > 0) {
-          controller.textContent = 'CC ' + number;
-          text.textContent = V2MIDI.CC.Name[number] || 'Controller ' + number;
+        if (number > 0)
+          text.textContent = V2MIDI.CC.Name[number] || 'CC ' + number;
 
-        } else {
-          controller.textContent = null;
+        else
           text.textContent = 'Disabled';
-        }
       };
 
       new V2WebField(canvas, (field) => {
         field.addButton((e) => {
-          controller = e;
           e.classList.add('width-label');
           e.classList.add('has-background-grey-lighter');
           e.classList.add('inactive');
           e.tabIndex = -1;
+          e.textContent = 'Controller';
         });
 
         field.addButton((e) => {
@@ -578,7 +577,6 @@ class V2SettingsDrum extends V2SettingsModule {
         field.addInput('number', (e) => {
           this.#controller = e;
           e.classList.add('width-number');
-          e.title = 'The controller number';
           e.min = 0;
           e.max = 127;
           e.value = drum.controller;
@@ -595,7 +593,6 @@ class V2SettingsDrum extends V2SettingsModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.title = 'The controller number';
         e.min = 0;
         e.max = 127;
         e.value = this.#controller.value;
@@ -614,14 +611,22 @@ class V2SettingsDrum extends V2SettingsModule {
         note.textContent = V2MIDI.Note.name(number);
         if (V2MIDI.Note.isBlack(number)) {
           note.classList.add('is-dark');
-          note.classList.remove('has-background-grey-lighter');
+          note.classList.remove('has-background-light');
         } else {
           note.classList.remove('is-dark');
-          note.classList.add('has-background-grey-lighter');
+          note.classList.add('has-background-light');
         }
       }
 
       new V2WebField(canvas, (field) => {
+        field.addButton((e) => {
+          e.classList.add('width-label');
+          e.classList.add('has-background-grey-lighter');
+          e.classList.add('inactive');
+          e.tabIndex = -1;
+          e.textContent = 'Note';
+        });
+
         field.addButton((e) => {
           note = e;
           e.classList.add('width-label');
@@ -632,7 +637,6 @@ class V2SettingsDrum extends V2SettingsModule {
         field.addInput('number', (e) => {
           this.#note = e;
           e.classList.add('width-number');
-          e.title = 'The note number';
           e.min = 0;
           e.max = 127;
           e.value = drum.note;
@@ -649,7 +653,6 @@ class V2SettingsDrum extends V2SettingsModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.title = 'The note number';
         e.min = 0;
         e.max = 127;
         e.value = this.#note.value;
@@ -677,7 +680,6 @@ class V2SettingsDrum extends V2SettingsModule {
         field.addInput('number', (e) => {
           this.#sensitivity = e;
           e.classList.add('width-label'); // -0.99 does not fit
-          e.title = 'The sensitivity';
           e.min = -0.99;
           e.max = 0.99;
           e.step = 0.01;
@@ -692,7 +694,6 @@ class V2SettingsDrum extends V2SettingsModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.title = 'The sensitivity';
         e.min = -0.99;
         e.max = 0.99;
         e.step = 0.01;
@@ -734,32 +735,28 @@ class V2SettingsMIDI extends V2SettingsModule {
     super.addTitle(canvas, 'MIDI');
 
     new V2WebField(canvas, (field) => {
-      new V2WebField(canvas, (field) => {
-        field.addButton((e) => {
-          e.classList.add('width-label');
-          e.classList.add('has-background-grey-lighter');
-          e.classList.add('inactive');
-          e.textContent = 'Channel';
-          e.tabIndex = -1;
-        });
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('has-background-grey-lighter');
+        e.classList.add('inactive');
+        e.textContent = 'Channel';
+        e.tabIndex = -1;
+      });
 
-        field.addElement('span', (e) => {
-          e.classList.add('select');
+      field.addElement('span', (e) => {
+        e.classList.add('select');
 
-          V2Web.addElement(e, 'select', (select) => {
-            this.#channel.element = select;
-            select.title = 'The MIDI Channel';
+        V2Web.addElement(e, 'select', (select) => {
+          this.#channel.element = select;
 
-            for (let i = 1; i < 17; i++) {
-              V2Web.addElement(select, 'option', (e) => {
-                e.title = i;
-                e.value = i;
-                e.text = i;
-                if (i == this.getConfiguration(data.configuration))
-                  e.selected = true;
-              });
-            }
-          });
+          for (let i = 1; i < 17; i++) {
+            V2Web.addElement(select, 'option', (e) => {
+              e.value = i;
+              e.text = i;
+              if (i == this.getConfiguration(data.configuration))
+                e.selected = true;
+            });
+          }
         });
       });
     });
@@ -769,6 +766,187 @@ class V2SettingsMIDI extends V2SettingsModule {
 
   save(configuration) {
     this.setConfiguration(configuration, this.#channel.element.value);
+  }
+}
+
+// Note selector.
+class V2SettingsNote extends V2SettingsModule {
+  static type = 'note';
+
+  #note = null;
+
+  constructor(device, settings, canvas, setting, data) {
+    super(device, settings, setting);
+    if (setting.title)
+      super.addTitle(canvas, setting.title);
+
+    let note = null;
+    let range = null;
+
+    const update = (number) => {
+      if (number == null || number < 0 || number > 127)
+        return;
+
+      note.textContent = V2MIDI.Note.name(number);
+      if (V2MIDI.Note.isBlack(number)) {
+        note.classList.add('is-dark');
+        note.classList.remove('has-background-light');
+      } else {
+        note.classList.remove('is-dark');
+        note.classList.add('has-background-light');
+      }
+
+      this.#note.value = Number(number);
+      range.value = number;
+    }
+
+    new V2WebField(canvas, (field) => {
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('has-background-grey-lighter');
+        e.classList.add('inactive');
+        e.tabIndex = -1;
+        e.textContent = setting.label;
+      });
+
+      field.addButton((e) => {
+        note = e;
+        e.classList.add('width-label');
+        e.classList.add('inactive');
+        e.tabIndex = -1;
+      });
+
+      field.addInput('number', (e) => {
+        this.#note = e;
+        e.classList.add('width-number');
+        e.min = (setting.min != null) ? setting.min : 0;
+        e.max = (setting.max != null) ? setting.max : 127;
+        e.addEventListener('input', () => {
+          update(e.value);
+        });
+      });
+
+      field.addButton((e) => {
+        e.textContent = '-';
+        e.style.width = '3rem';
+        e.addEventListener('click', () => {
+          update(Number(this.#note.value) - 1);
+        });
+      });
+
+      field.addButton((e) => {
+        e.textContent = '+';
+        e.style.width = '3rem';
+        e.addEventListener('click', () => {
+          update(Number(this.#note.value) + 1);
+        });
+      });
+    });
+
+    V2Web.addElement(canvas, 'input', (e) => {
+      range = e;
+      e.classList.add('range');
+      e.type = 'range';
+      e.min = this.#note.min;
+      e.max = this.#note.max;
+      e.addEventListener('input', () => {
+        update(e.value);
+      });
+    });
+
+    update(this.getConfiguration(data.configuration));
+    return Object.seal(this);
+  }
+
+  save(configuration) {
+    this.setConfiguration(configuration, this.#note.value);
+  }
+}
+
+// Numeric field.
+class V2SettingsNumber extends V2SettingsModule {
+  static type = 'number';
+
+  #number = null;
+
+  constructor(device, settings, canvas, setting, data) {
+    super(device, settings, setting);
+    if (setting.title)
+      super.addTitle(canvas, setting.title);
+
+    let number = null;
+    let range = null;
+    const min = (setting.min != null) ? setting.min : 0;
+    const max = (setting.max != null) ? setting.max : 127;
+    const step = (setting.step != null) ? setting.step : 1;
+    const select = setting.input == 'select';
+
+    new V2WebField(canvas, (field) => {
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('has-background-grey-lighter');
+        e.classList.add('inactive');
+        e.textContent = setting.label;
+        e.tabIndex = -1;
+      });
+
+      if (!select) {
+        field.addInput('number', (e) => {
+          number = e;
+          e.classList.add('width-number');
+          e.min = min
+          e.max = max;
+          e.step = step;
+          e.value = this.getConfiguration(data.configuration);
+          e.addEventListener('input', () => {
+            this.#number = e.value;
+            range.value = e.value;
+          });
+        });
+
+      } else {
+        field.addElement('span', (e) => {
+          e.classList.add('select');
+
+          V2Web.addElement(e, 'select', (select) => {
+            for (let i = min; i < max + 1; i++) {
+              V2Web.addElement(select, 'option', (e) => {
+                e.value = i;
+                e.text = i;
+                if (i == this.getConfiguration(data.configuration))
+                  e.selected = true;
+              });
+            }
+
+            select.addEventListener('change', () => {
+              this.#number = select.value;
+            });
+          });
+        });
+      }
+    });
+
+    if (!select) {
+      V2Web.addElement(canvas, 'input', (e) => {
+        range = e;
+        e.classList.add('range');
+        e.type = 'range';
+        e.min = number.min;
+        e.max = number.max;
+        e.step = number.step;
+        e.value = number.value;
+        e.addEventListener('input', () => {
+          this.#number = e.value;
+          number.value = e.value;
+        });
+      });
+    }
+
+    return Object.seal(this);
+  }
+
+  save(configuration) {
+    this.setConfiguration(configuration, this.#number);
   }
 }
 
@@ -808,6 +986,16 @@ class V2SettingsText extends V2SettingsModule {
   }
 }
 
+// Title / header.
+class V2SettingsTitle extends V2SettingsModule {
+  static type = 'title';
+
+  constructor(device, settings, canvas, setting, data) {
+    super(device, settings, setting);
+    super.addTitle(canvas, setting.title);
+  }
+}
+
 // The USB properties. There is no settings entry specified. All devices
 // support a custom name, the ports value is optional.
 class V2SettingsUSB extends V2SettingsModule {
@@ -832,7 +1020,6 @@ class V2SettingsUSB extends V2SettingsModule {
       field.addInput('text', (e) => {
         this.#name = e;
         e.classList.add('text-wide');
-        e.title = 'The USB device name';
         e.maxLength = 31;
         if (data.system.name)
           e.value = data.system.name;
@@ -856,11 +1043,9 @@ class V2SettingsUSB extends V2SettingsModule {
 
           V2Web.addElement(e, 'select', (select) => {
             this.#ports = select;
-            select.title = 'The number of MIDI ports';
 
             for (let i = 1; i < 17; i++) {
               V2Web.addElement(select, 'option', (e) => {
-                e.title = i;
                 e.value = i;
                 e.text = i;
                 if (i == data.system.ports.configured)

@@ -18,7 +18,6 @@ class V2MIDISelect {
 
       V2Web.addElement(e, 'select', (select) => {
         this.#select = select;
-        select.title = 'Select the MIDI device to connect to';
         select.disabled = true;
         select.addEventListener('change', () => {
           if (select.value == '') {

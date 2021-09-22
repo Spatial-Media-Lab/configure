@@ -7,6 +7,18 @@ const files = [
   __FILES__
 ];
 
+// Receive commands from the application.
+self.addEventListener('message', (e) => {
+  if (!e.data || !e.data.type)
+    return;
+
+  switch (e.data.type) {
+    case 'skipWaiting':
+      self.skipWaiting();
+      break;
+  }
+});
+
 // Install a new version of the files, bypass the browser's cache.
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -32,15 +44,15 @@ self.addEventListener('activate', (e) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key.startsWith(name + '-') && (key != name + '-' + version)) {
+          if (key.startsWith(name + '-') && (key != name + '-' + version))
             return caches.delete(key);
-          }
         })
       );
     })
   );
 });
 
+// Try to serve the cached page, fall back to the network.
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request)

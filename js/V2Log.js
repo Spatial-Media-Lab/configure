@@ -13,18 +13,16 @@ class V2Log extends V2WebModule {
   constructor() {
     super('log', 'Log', 'View system events');
 
-    new V2WebField(this.canvas, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(this.canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Status';
-        e.title = 'Print all available MIDI ports'
         e.addEventListener('click', () => {
           this.#device.printStatus();
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Clear';
-        e.title = 'Clear this log'
         e.addEventListener('click', () => {
           this.#clear();
         });

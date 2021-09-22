@@ -83,7 +83,10 @@ class V2ConfigurationSettings {
     this.register(V2SettingsController);
     this.register(V2SettingsDrum);
     this.register(V2SettingsMIDI);
+    this.register(V2SettingsNote);
+    this.register(V2SettingsNumber);
     this.register(V2SettingsText);
+    this.register(V2SettingsTitle);
     this.register(V2SettingsUSB);
 
     return Object.seal(this);
@@ -97,19 +100,17 @@ class V2ConfigurationSettings {
     const notify = this.#timeout != null;
     this.clear();
 
-    new V2WebField(this.#canvas, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(this.#canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Reboot';
-        e.title = 'Reboot the device';
         e.addEventListener('click', () => {
           this.#device.sendReboot();
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.classList.add('is-link');
         e.textContent = 'Save';
-        e.title = 'Store the settings';
         e.addEventListener('click', () => {
           this.save();
         });
@@ -162,7 +163,8 @@ class V2ConfigurationSettings {
     const configuration = {};
 
     for (const section of this.#sections)
-      section.save(configuration);
+      if (section.save)
+        section.save(configuration);
 
     this.#device.printDevice('Calling <b>writeConfiguration()</b> ');
     this.#device.sendRequest({
@@ -197,18 +199,16 @@ class V2ConfigurationSystem {
     const notify = this.#timeout != null;
     this.clear();
 
-    new V2WebField(this.#canvas, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(this.#canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Backup';
-        e.title = 'Write the configuration to a file';
         e.addEventListener('click', () => {
           this.#save();
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Restore';
-        e.title = 'Read a configuration from a file';
         e.addEventListener('click', () => {
           this.#openFile();
         });
@@ -218,18 +218,16 @@ class V2ConfigurationSystem {
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Erase';
-        e.title = 'Reset everything to defaults and reboot the device';
         e.addEventListener('click', () => {
           this.#erase();
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.classList.add('is-link');
         e.textContent = 'Save';
-        e.title = 'Store this configuration in the device';
         e.addEventListener('click', () => {
           this.#send();
         });

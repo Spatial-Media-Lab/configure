@@ -720,6 +720,7 @@ class V2MIDIDevice {
   output = null;
 
   #notifiers = Object.seal({
+    message: [],
     note: [],
     noteOff: [],
     aftertouch: [],
@@ -751,6 +752,9 @@ class V2MIDIDevice {
 
   // Incoming message.
   handleMessage(message) {
+    for (const notifier of this.#notifiers.message)
+      notifier(message.data);
+
     const type = V2MIDI.Status.getType(message.data[0]);
     const channel = V2MIDI.Status.getChannel(message.data[0]);
 
@@ -811,11 +815,11 @@ class V2MIDIDevice {
   }
 
   // Outgoing messages.
-  sendPacket(packet) {
+  sendMessage(message) {
     if (!this.output)
       return;
 
-    this.output.send(packet);
+    this.output.send(message);
   }
 
   sendNote(channel, note, velocity) {
@@ -825,12 +829,10 @@ class V2MIDIDevice {
     this.output.send([V2MIDI.Status.noteOn | channel, note, velocity]);
   }
 
-  sendNoteOff(channel, note, velocity) {
+  sendNoteOff(channel, note, velocity = 64) {
     if (!this.output)
       return;
 
-    if (velocity == null)
-      velocity = 64;
     this.output.send([V2MIDI.Status.noteOff | channel, note, velocity]);
   }
 

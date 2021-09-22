@@ -10,12 +10,61 @@ class V2Web {
     this.setupMenu();
   }
 
-  static registerWorker(worker) {
+  static registerServiceWorker(worker, handler) {
     if (!('serviceWorker' in navigator))
       return;
 
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register(worker).then(null, () => {});
+      navigator.serviceWorker.register(worker, {
+          updateViaCache: 'none'
+        })
+        .then((registration) => {
+          registration.addEventListener('updatefound', () => {
+            const worker = registration.installing;
+            worker.addEventListener('statechange', () => {
+              handler(worker.state, registration.waiting);
+            });
+          });
+        }, () => {});
+    });
+  }
+
+  static notifyUpdate(text, handler) {
+    V2Web.addElementAfter(document.querySelector('.navbar'), 'section', (section) => {
+      section.classList.add('has-background-info-light');
+      section.classList.add('mb-0');
+      section.classList.add('py-2');
+
+      V2Web.addElement(section, 'div', (line) => {
+        line.classList.add('container');
+        line.classList.add('is-flex');
+        line.classList.add('is-justify-content-space-between');
+        line.classList.add('is-align-items-center');
+
+        V2Web.addElement(line, 'div', (e) => {
+          e.textContent = text;
+        });
+
+        V2Web.addButtons(line, (right) => {
+          right.classList.add('is-flex');
+          right.classList.add('is-justify-content-end');
+
+          V2Web.addButton(right, (e) => {
+            e.textContent = 'Close';
+            e.addEventListener('click', () => {
+              section.remove();
+            });
+          });
+
+          V2Web.addButton(right, (e) => {
+            e.classList.add('is-link');
+            e.textContent = 'Update';
+            e.addEventListener('click', () => {
+              handler();
+            });
+          });
+        });
+      })
     });
   }
 
@@ -117,6 +166,25 @@ class V2Web {
           break;
       }
     });
+  }
+
+  static addButtons(element, handler) {
+    const e = document.createElement('div');
+    e.classList.add('buttons');
+    e.classList.add('has-addons');
+    if (handler)
+      handler(e);
+
+    element.appendChild(e);
+  }
+
+  static addButton(element, handler) {
+    const e = document.createElement('button');
+    e.classList.add('button');
+    if (handler)
+      handler(e);
+
+    element.appendChild(e);
   }
 }
 

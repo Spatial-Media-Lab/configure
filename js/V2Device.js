@@ -63,8 +63,8 @@ class V2Device extends V2WebModule {
     this.#device = new V2MIDIDevice();
     this.#device.addNotifier('note', (channel, note, velocity) => {
       if (velocity > 0)
-        this.print('Received <b>NoteOn</b> <i>' +
-          V2MIDI.Note.name(note) + '(' + note + ')</i> with velocity ' + velocity + ' on channel <i>#' + (channel + 1)) + '</i>';
+        this.print('Received <b>Note</b> <i>' +
+          V2MIDI.Note.name(note) + '(' + note + ')</i> with velocity <i>' + velocity + '</i> on channel <i>#' + (channel + 1)) + '</i>';
 
       else
         this.print('Received <b>NoteOff</b> <i>' +
@@ -73,7 +73,7 @@ class V2Device extends V2WebModule {
 
     this.#device.addNotifier('noteOff', (channel, note, velocity) => {
       this.print('Received <b>NoteOff</b> <i>' +
-        V2MIDI.Note.name(note) + '(' + note + ')</i> with velocity ' + velocity + ' on channel #' + (channel + 1));
+        V2MIDI.Note.name(note) + '(' + note + ')</i> with velocity <i>' + velocity + '</i> on channel #' + (channel + 1));
     });
 
     this.#device.addNotifier('aftertouch', (channel, note, pressure) => {
@@ -138,8 +138,6 @@ class V2Device extends V2WebModule {
         this.#select.update(this.#midi.getDevices('both'));
       });
 
-      this.#log.print('WebMIDI initialized');
-      this.printStatus();
       this.#select.update(this.#midi.getDevices('both'));
 
       // Adding '?connect=<device name>' to the URL will try to connect to a device with the given name.
@@ -305,14 +303,14 @@ class V2Device extends V2WebModule {
 
   sendNote(channel, note, velocity) {
     this.#device.sendNote(channel, note, velocity);
-    this.print('Sending <b>NoteOn</b> <i>#' + note +
-      '</i> with velocity <i>' + velocity + '</i> on channel <i>#' + (channel + 1) + '</i>');
+    this.print('Sending <b>Note</b> <i>' +
+      V2MIDI.Note.name(note) + '(' + note + ')</i> with velocity <i>' + velocity + '</i> on channel #' + (channel + 1));
   }
 
-  sendNoteOff(channel, note, velocity) {
+  sendNoteOff(channel, note, velocity = 64) {
     this.#device.sendNoteOff(channel, note, velocity);
-    this.print('Sending <b>NoteOff</b> <i>#' + note +
-      '</i> with velocity <i>' + (velocity || 64) + '</i> on channel <i>#' + (channel + 1) + '</i>');
+    this.print('Sending <b>NoteOff</b> <i>' +
+      V2MIDI.Note.name(note) + '(' + note + ')</i> with velocity <i>' + velocity + '</i> on channel #' + (channel + 1));
   }
 
   sendControlChange(channel, controller, value) {
@@ -419,11 +417,10 @@ class V2Device extends V2WebModule {
     });
 
     // The Details tab.
-    new V2WebField(this.#details, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(this.#details, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.classList.add('is-link');
         e.textContent = 'Refresh';
-        e.title = 'Refresh the data';
         e.addEventListener('click', () => {
           this.sendGetAll();
         });
@@ -471,10 +468,9 @@ class V2Device extends V2WebModule {
     });
 
     // The Update tab.
-    new V2WebField(this.#update.element, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(this.#update.element, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Enable Ports';
-        e.title = 'Enable MIDI ports to access the children devices';
         if (!data.system.ports || data.system.ports.announce == 0)
           e.disabled = true;
         e.addEventListener('click', () => {
@@ -482,9 +478,8 @@ class V2Device extends V2WebModule {
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Load';
-        e.title = 'Load a firmware image';
         e.addEventListener('click', () => {
           this.#openFirmware();
         });
@@ -494,12 +489,11 @@ class V2Device extends V2WebModule {
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         this.#update.elementUpload = e;
         e.classList.add('is-link');
         e.disabled = true;
         e.textContent = 'Install';
-        e.title = 'Update the device with the new firmware';
         e.addEventListener('click', () => {
           this.#uploadFirmware();
         });

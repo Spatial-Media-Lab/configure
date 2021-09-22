@@ -76,7 +76,6 @@ class V2Input extends V2WebModule {
           field.addInput('number', (e) => {
             input = e;
             e.classList.add('width-number');
-            e.title = 'The controller value';
             e.min = 0;
             e.max = 127;
             e.value = value || 0;
@@ -99,7 +98,6 @@ class V2Input extends V2WebModule {
             field.addInput('number', (e) => {
               inputFine = e;
               e.classList.add('width-number');
-              e.title = 'The controller value';
               e.min = 0;
               e.max = 127;
               e.value = value;
@@ -120,7 +118,6 @@ class V2Input extends V2WebModule {
 
             V2Web.addElement(label, 'input', (e) => {
               e.type = 'checkbox';
-              e.title = 'Toggle Switch';
               e.checked = value > 63;
               e.addEventListener('input', () => {
                 this.#device.sendControlChange(this.#channel, controller, e.checked ? 127 : 0);
@@ -137,7 +134,6 @@ class V2Input extends V2WebModule {
           field.addButton((e) => {
             e.classList.add('width-label');
             e.classList.add('is-link');
-            e.title = 'Momentary Switch';
 
             e.addEventListener('mousedown', () => {
               this.#device.sendControlChange(this.#channel, controller, 127);
@@ -167,7 +163,6 @@ class V2Input extends V2WebModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.title = 'The controller value';
         if (!inputFine) {
           e.max = 127;
           e.value = value || 0;
@@ -208,7 +203,6 @@ class V2Input extends V2WebModule {
             if (V2MIDI.Note.isBlack(note))
               e.classList.add('is-dark');
 
-            e.title = '#' + note;
 
             e.addEventListener('mousedown', () => {
               this.#device.sendNote(this.#channel, note, this.#notes.controls.velocity);
@@ -248,8 +242,8 @@ class V2Input extends V2WebModule {
   }
 
   #addNote(name, note) {
-    new V2WebField(this.#notes.elementList, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(this.#notes.elementList, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.classList.add('width-label');
         e.classList.add('inactive');
         e.textContent = V2MIDI.Note.name(note);
@@ -260,7 +254,7 @@ class V2Input extends V2WebModule {
         e.tabIndex = -1;
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.classList.add('width-text');
         e.classList.add('has-background-light');
         e.classList.add('inactive');
@@ -268,10 +262,9 @@ class V2Input extends V2WebModule {
         e.tabIndex = -1;
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.classList.add('width-label');
         e.classList.add('is-link');
-        e.title = '#' + note;
         e.addEventListener('mousedown', () => {
           this.#device.sendNote(this.#channel, note, this.#notes.controls.velocity);
         });
@@ -320,11 +313,9 @@ class V2Input extends V2WebModule {
           e.classList.add('select');
 
           V2Web.addElement(e, 'select', (select) => {
-            select.title = 'Send MIDI Program Change';
 
             for (const [index, program] of channel.programs.entries())
               V2Web.addElement(select, 'option', (e) => {
-                e.title = 'Program ' + (program.number + 1) + (this.#controls.bank != null ? ', Bank ' + (program.bank + 1) : '');
                 e.text = (program.number + 1) + (this.#controls.bank != null ? ' Bank ' + (program.bank + 1) : '') + ' – ' + program.name;
                 e.selected = (program.number == this.#controls.program) && (program.bank == this.#controls.bank);
               })
@@ -370,7 +361,6 @@ class V2Input extends V2WebModule {
         field.addInput('number', (e) => {
           input = e;
           e.classList.add('width-number');
-          e.title = 'The velocity value to play the notes with';
           e.min = 1;
           e.max = 127;
           e.value = this.#notes.controls.velocity;
@@ -385,7 +375,6 @@ class V2Input extends V2WebModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.title = 'The velocity value to play the notes with';
         e.min = 1;
         e.max = 127;
         e.value = this.#notes.controls.velocity;
@@ -413,7 +402,6 @@ class V2Input extends V2WebModule {
             input = e;
             e.classList.add('input');
             e.classList.add('width-number');
-            e.title = 'Channel Aftertouch';
             e.min = 0;
             e.max = 127;
             e.value = channel.aftertouch.value;
@@ -426,7 +414,6 @@ class V2Input extends V2WebModule {
 
         V2Web.addElement(this.#notes.controls.element, 'input', (e) => {
           e.classList.add('range');
-          e.title = 'Channel Aftertouch';
           e.type = 'range';
           e.min = 0;
           e.max = 127;
@@ -467,7 +454,6 @@ class V2Input extends V2WebModule {
           field.addInput('number', (e) => {
             input = e;
             e.classList.add('width-number');
-            e.title = 'Pitch Bend';
             e.min = -8192;
             e.max = 8191;
             e.value = channel.pitchbend.value;
@@ -480,7 +466,6 @@ class V2Input extends V2WebModule {
 
         V2Web.addElement(this.#notes.controls.element, 'input', (e) => {
           e.classList.add('range');
-          e.title = 'Pitch Bend';
           e.type = 'range';
           e.min = -8192;
           e.max = 8191;
@@ -530,27 +515,24 @@ class V2Input extends V2WebModule {
   #show(data) {
     this.#clear();
 
-    new V2WebField(this.canvas, (field) => {
-      field.addButton((e) => {
+    V2Web.addButtons(this.canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Notes Off';
-        e.title = 'Silence all active notes';
         e.addEventListener('click', () => {
           this.#device.sendControlChange(this.#channel, V2MIDI.CC.allNotesOff, 0);
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.textContent = 'Reset';
-        e.title = 'Reset the device';
         e.addEventListener('click', () => {
           this.#device.sendReset();
         });
       });
 
-      field.addButton((e) => {
+      V2Web.addButton(buttons, (e) => {
         e.classList.add('is-link');
         e.textContent = 'Refresh';
-        e.title = 'Refresh the data';
         e.addEventListener('click', () => {
           this.#device.sendGetAll();
         });
@@ -617,7 +599,6 @@ class V2Input extends V2WebModule {
           e.classList.add('select');
 
           V2Web.addElement(e, 'select', (select) => {
-            select.title = 'MIDI Channel';
 
             // Look for the currently selected channel number.
             data.input.channels.find((channel) => {
@@ -630,7 +611,6 @@ class V2Input extends V2WebModule {
 
             for (const channel of data.input.channels)
               V2Web.addElement(select, 'option', (e) => {
-                e.title = '#' + (channel.number + 1);
                 e.text = (channel.number + 1);
                 if (channel.name)
                   e.text += ' - ' + channel.name;

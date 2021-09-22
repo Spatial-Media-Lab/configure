@@ -159,7 +159,6 @@ class V2Output extends V2WebModule {
             V2Web.addElement(label, 'input', (e) => {
               e.disabled = true;
               e.type = 'checkbox';
-              e.title = 'Toggle Switch';
               e.checked = value > 63;
               this.#controllers.list[controller] = {
                 'switch': e
@@ -178,7 +177,6 @@ class V2Output extends V2WebModule {
             e.classList.add('inactive');
             if (value > 63)
               e.classList.add('is-link');
-            e.title = 'Momentary Switch';
             e.tabIndex = -1;
             this.#controllers.list[controller] = {
               'button': e
@@ -224,7 +222,6 @@ class V2Output extends V2WebModule {
       field.addInput('number', (e) => {
         e.classList.add('width-number');
         e.classList.add('inactive');
-        e.title = 'Velocity';
         e.readOnly = true;
         e.tabIndex = -1;
         this.#notes.list[note] = {
@@ -262,8 +259,8 @@ class V2Output extends V2WebModule {
       this.#channel.element = e;
       e.style.display = 'none';
 
-      new V2WebField(e, (field) => {
-        field.addButton((e) => {
+      V2Web.addButtons(e, (buttons) => {
+        V2Web.addButton(buttons, (e) => {
           e.classList.add('width-label');
           e.classList.add('has-background-grey-lighter');
           e.classList.add('inactive');
@@ -271,7 +268,7 @@ class V2Output extends V2WebModule {
           e.tabIndex = -1;
         });
 
-        field.addButton((e) => {
+        V2Web.addButton(buttons, (e) => {
           this.#channel.elementValue = e;
           e.classList.add('inactive');
           e.tabIndex = -1;

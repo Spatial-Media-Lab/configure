@@ -3,8 +3,8 @@
 
 <head>
   <meta name="name" content="configure">
-  <meta name="version" content="50">
-  <meta name="revised" content="2021-08-25">
+  <meta name="version" content="97">
+  <meta name="revised" content="2021-09-22">
   <meta name="copyright" content="Kay Sievers, kay@vrfy.org">
   <meta name="license" content="Apache-2.0">
   <meta name="rating" content="safe for kids">
@@ -136,22 +136,18 @@
   <script src="js/V2Settings.js"></script>
   <script src="js/V2Input.js"></script>
   <script src="js/V2Output.js"></script>
-  <script src="js/V2Test.js"></script>
   <script src="js/V2Debug.js"></script>
   <script>
     'use strict';
 
-    // Allow to cache the content for offline operation, or to install it as a standalone web application.
-    V2Web.registerWorker('service-worker.js');
-
-    // Initialize the menu.
-    V2Web.setup();
-
     {
+      // Initialize the menu.
+      V2Web.setup();
+
       // Early logging init, we don't have a device or the web sections yet, but we already
       // record the messages. setup() is called later to attach the log as the last web section.
       const log = new V2Log();
-      log.print('<b>Versio Duo</b> WebMIDI device configuration, version <b>' + Number(document.querySelector('meta[name="version"]').content) + '</b>');
+      log.print('Versio Duo – configure, version <b>' + Number(document.querySelector('meta[name="version"]').content) + '</b>');
 
       // Read commands from the URL.
       const url = new URL(window.location);
@@ -166,10 +162,33 @@
 
       // Add the sections.
       const device = new V2Device(log, connect);
+
+      // Cache the content for offline operation.
+      V2Web.registerServiceWorker('service-worker.js', (state, newWorker) => {
+        // There is no worker during the intial setup.
+        if (!navigator.serviceWorker.controller)
+          return;
+
+        switch (state) {
+          case 'installed':
+            // A new version was installed into the cache and a new worker is waiting to take control.
+            V2Web.notifyUpdate('A fresh version is available', () => {
+              newWorker.postMessage({
+                type: 'skipWaiting'
+              });
+            });
+            break;
+
+          case 'activated':
+            // A new worker took control over the page.
+            location.reload();
+            break;
+        }
+      });
+
       new V2Configuration(device);
       new V2Input(device);
       new V2Output(device);
-      //new V2Test(device);
       log.setup(device);
 
       if (url.searchParams.get('debug'))

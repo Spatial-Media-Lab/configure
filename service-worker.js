@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 const name = 'configure';
-const version = 50;
+const version = 97;
 const files = [
   './',
   'css/bulma-addons.css',
@@ -26,13 +26,24 @@ const files = [
   'js/V2MIDISelect.js',
   'js/V2Output.js',
   'js/V2Settings.js',
-  'js/V2Test.js',
   'js/V2Web.js',
   'site.webmanifest',
   'webfonts/fa-brands-400.woff2',
   'webfonts/fa-regular-400.woff2',
   'webfonts/fa-solid-900.woff2'
 ];
+
+// Receive commands from the application.
+self.addEventListener('message', (e) => {
+  if (!e.data || !e.data.type)
+    return;
+
+  switch (e.data.type) {
+    case 'skipWaiting':
+      self.skipWaiting();
+      break;
+  }
+});
 
 // Install a new version of the files, bypass the browser's cache.
 self.addEventListener('install', (e) => {
@@ -59,15 +70,15 @@ self.addEventListener('activate', (e) => {
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
-          if (key.startsWith(name + '-') && (key != name + '-' + version)) {
+          if (key.startsWith(name + '-') && (key != name + '-' + version))
             return caches.delete(key);
-          }
         })
       );
     })
   );
 });
 
+// Try to serve the cached page, fall back to the network.
 self.addEventListener('fetch', (e) => {
   e.respondWith(
     caches.match(e.request)
