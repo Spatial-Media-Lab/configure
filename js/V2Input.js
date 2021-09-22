@@ -453,7 +453,7 @@ class V2Input extends V2WebModule {
 
           field.addInput('number', (e) => {
             input = e;
-            e.classList.add('width-number');
+            e.classList.add('width-label');
             e.min = -8192;
             e.max = 8191;
             e.value = channel.pitchbend.value;

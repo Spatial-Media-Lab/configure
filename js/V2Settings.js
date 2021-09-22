@@ -863,6 +863,57 @@ class V2SettingsNote extends V2SettingsModule {
   }
 }
 
+// On/Off switch.
+class V2SettingsToggle extends V2SettingsModule {
+  static type = 'toggle';
+
+  #toggle = null;
+
+  constructor(device, settings, canvas, setting, data) {
+    super(device, settings, setting);
+    if (setting.title)
+      super.addTitle(canvas, setting.title);
+
+    new V2WebField(canvas, (field) => {
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('has-background-grey-lighter');
+        e.classList.add('inactive');
+        e.textContent = setting.label;
+        e.tabIndex = -1;
+      });
+
+      field.addButton((e) => {
+        e.classList.add('width-text');
+        e.classList.add('has-background-light');
+        e.classList.add('inactive');
+        e.textContent = setting.text;
+        e.tabIndex = -1;
+      });
+
+      field.addElement('label', (label) => {
+        label.classList.add('switch');
+
+        V2Web.addElement(label, 'input', (e) => {
+          this.#toggle = e;
+          e.type = 'checkbox';
+          e.checked = this.getConfiguration(data.configuration);
+        });
+
+        V2Web.addElement(label, 'span', (e) => {
+          e.classList.add('check');
+        });
+      });
+    });
+
+    return Object.seal(this);
+  }
+
+  save(configuration) {
+    this.setConfiguration(configuration, this.#toggle.checked);
+  }
+}
+
 // Numeric field.
 class V2SettingsNumber extends V2SettingsModule {
   static type = 'number';

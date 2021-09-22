@@ -84,6 +84,7 @@ class V2ConfigurationSettings {
     this.register(V2SettingsDrum);
     this.register(V2SettingsMIDI);
     this.register(V2SettingsNote);
+    this.register(V2SettingsToggle);
     this.register(V2SettingsNumber);
     this.register(V2SettingsText);
     this.register(V2SettingsTitle);
