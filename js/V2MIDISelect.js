@@ -81,7 +81,7 @@ class V2MIDISelect {
       V2Web.addElementAfter(after, 'option', (e) => {
         after = e;
         e.value = id;
-        e.text = device.name;
+        e.text = device.name + (device.instance > 0 ? ' #' + (device.instance + 1) : '');
       });
     }
 

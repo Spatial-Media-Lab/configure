@@ -59,7 +59,6 @@ class V2Log extends V2WebModule {
   }
 
   setup(device) {
-    this.attach();
     this.#device = device;
   }
 

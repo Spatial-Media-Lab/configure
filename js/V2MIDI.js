@@ -620,11 +620,15 @@ class V2MIDI {
       this.#system = access;
 
       // Subscribe to device connect/disconnect events.
-      this.#system.onstatechange = () => {
+      this.#system.onstatechange = (event) => {
         for (const notifier of this.#notifiers.state)
           notifier(event);
       };
       handler();
+
+      // Emit coldplug events to trigger the enumeration by clients.
+      for (const notifier of this.#notifiers.state)
+        notifier();
 
     }, () => {
       handler('Unable to access MIDI devices');
@@ -643,6 +647,9 @@ class V2MIDI {
     for (const port of this.#system.outputs.values())
       outputPorts.set(port.id, port);
 
+    let last = null;
+    let instance = 0;
+
     for (const port of this.#system.inputs.values()) {
       const outputPort = this.#findOutputPort(port);
 
@@ -653,26 +660,46 @@ class V2MIDI {
       else if (type == 'both' || type == 'output')
         continue;
 
-      const id = port.id + (outputPort ? outputPort.id : '');
+      if (port.name == last)
+        instance++;
+
+      else
+        instance = 0;
+
+      const id = port.id + ':' + (outputPort ? outputPort.id : '');
       devices.set(id, {
         name: port.name,
+        instance: instance,
         id: id,
         in: port,
         out: outputPort
       });
+
+      last = port.name;
     }
 
     if (type == 'both' || type == 'input')
       return devices;
 
     // Add the remaining output-only ports.
-    for (const port of outputPorts.values())
-      devices.set(port.id, {
+    for (const port of outputPorts.values()) {
+      if (port.name == last)
+        instance++;
+
+      else
+        instance = 0;
+
+      const id = ':' + port.id;
+      devices.set(id, {
         name: port.name,
-        id: port.id,
+        instance: instance,
+        id: id,
         in: null,
         out: port
       });
+
+      last = port.name;
+    }
 
     return devices;
   }
@@ -735,6 +762,21 @@ class V2MIDIDevice {
 
   addNotifier(type, handler) {
     this.#notifiers[type].push(handler);
+  }
+
+  // OS-dependendent unique ID of the device.
+  getID() {
+    return (this.input ? this.input.id : '') + ':' + (this.output ? this.output.id : '');
+  }
+
+  getName() {
+    if (this.input)
+      return this.input.name;
+
+    if (this.output)
+      return this.output.name;
+
+    return null;
   }
 
   disconnect() {

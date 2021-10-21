@@ -123,14 +123,16 @@ class V2SettingsCalibration extends V2SettingsModule {
     super.addTitle(canvas, 'Calibration');
 
     // Find current program.
-    data.input.programs.find((program) => {
-      if (!program.selected)
-        return false;
+    if (data.input.programs) {
+      data.input.programs.find((program) => {
+        if (!program.selected)
+          return false;
 
-      this.#currentProgram.bank = program.bank;
-      this.#currentProgram.number = program.number;
-      return true;
-    });
+        this.#currentProgram.bank = program.bank;
+        this.#currentProgram.number = program.number;
+        return true;
+      });
+    }
 
     if (setting.program != null) {
       this.#notes.bank = setting.program.bank;

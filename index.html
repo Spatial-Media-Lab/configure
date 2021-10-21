@@ -3,8 +3,8 @@
 
 <head>
   <meta name="name" content="configure">
-  <meta name="version" content="99">
-  <meta name="revised" content="2021-09-22">
+  <meta name="version" content="139">
+  <meta name="revised" content="2021-10-21">
   <meta name="copyright" content="Kay Sievers, kay@vrfy.org">
   <meta name="license" href="LICENSE">
   <meta name="rating" content="safe for kids">
@@ -13,8 +13,9 @@
   <meta name="description" content="MIDI Device Configuration">
   <link rel="canonical" href="https://spatial-media-lab.github.io/configure/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="icons/logo.svg" media="(prefers-color-scheme: light)">
-  <link rel="icon" href="icons/logo-white.svg" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="black">
+  <link rel="icon" href="icons/logo-black.svg" media="(prefers-color-scheme: light)">
+  <link rel="icon" href="icons/logo.svg" media="(prefers-color-scheme: dark)">
   <link rel="manifest" href="site.webmanifest">
   <link rel="stylesheet" href="css/bulma.min.css">
   <link rel="stylesheet" href="css/bulma-addons.css">
@@ -22,6 +23,7 @@
   <link rel="stylesheet" href="css/fontawesome.min.css">
   <style>
     html {
+      background-color: black;
       scroll-padding-top: 3.25rem;
       scroll-behavior: smooth;
       overflow: auto;
@@ -29,21 +31,16 @@
 
     body {
       font-family: sans-serif;
+      color: hsl(0, 0%, 21%);
     }
 
-    /* Avoid blue-colored Home/Brand */
-    a.navbar-home:focus {
-      color: hsl(0, 0%, 29%);
-    }
-
-    /* Do not mess with the DIN font, fake bold looks really ugly */
-    .title {
-      font-weight: 400;
+    .navbar {
+      opacity: 95%;
     }
 
     section {
       background-color: hsl(0, 0%, 92%);
-      margin-bottom: 1.5rem;
+      margin-bottom: 0.25rem;
       padding: 1rem;
     }
 
@@ -91,7 +88,7 @@
 </head>
 
 <body class="has-navbar-fixed-top">
-  <nav class="navbar is-fixed-top" aria-label="navigation">
+  <nav class="navbar is-fixed-top is-black" aria-label="navigation">
     <div class="container">
       <div class="navbar-brand">
         <a class="navbar-home navbar-item is-size-4 pl-4" href="#">
@@ -143,9 +140,8 @@
       V2Web.setup();
 
       // Early logging init, we don't have a device or the web sections yet, but we already
-      // record the messages. setup() is called later to attach the log as the last web section.
+      // record the messages. setup() is called later to attach the device.
       const log = new V2Log();
-      log.print('Versio Duo – configure, version <b>' + Number(document.querySelector('meta[name="version"]').content) + '</b>');
 
       // Read commands from the URL.
       const url = new URL(window.location);
@@ -160,6 +156,7 @@
 
       // Add the sections.
       const device = new V2Device(log, connect);
+      log.setup(device);
 
       // Cache the content for offline operation.
       V2Web.registerServiceWorker('service-worker.js', (state, newWorker) => {
@@ -187,7 +184,6 @@
       new V2Configuration(device);
       new V2Input(device);
       new V2Output(device);
-      log.setup(device);
 
       if (url.searchParams.get('debug'))
         new V2Debug(device);

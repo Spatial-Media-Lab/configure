@@ -6,6 +6,7 @@ class V2Device extends V2WebModule {
   #midi = null;
   #bannerNotify = null;
   #select = null;
+  #version = null;
   #device = null;
   #data = null;
   #tabs = null;
@@ -43,11 +44,14 @@ class V2Device extends V2WebModule {
     });
 
     this.#select.addNotifier('select', (device) => {
-      if (device)
+      if (device) {
+        this.#log.attach();
         this.connect(device);
 
-      else
+      } else {
+        this.#log.detach();
         this.disconnect();
+      }
     });
 
     // Focus the device selector when new devices arrive and we are
@@ -125,20 +129,20 @@ class V2Device extends V2WebModule {
 
       // Subscribe to device connect/disconnect events.
       this.#midi.addNotifier('state', (event) => {
-        if (event.port.type == 'input')
-          this.#log.print('<b>' + event.port.name + '</b> (' + event.port.id + ', –): Port is ' + event.port.state);
+        if (event) {
+          if (event.port.type == 'input')
+            this.#log.print('<b>' + event.port.name + '</b> (' + event.port.id + ':): Port is ' + event.port.state);
 
-        else if (event.port.type == 'output')
-          this.#log.print('<b>' + event.port.name + '</b> (–, ' + event.port.id + '): Port is ' + event.port.state);
+          else if (event.port.type == 'output')
+            this.#log.print('<b>' + event.port.name + '</b> (:' + event.port.id + '): Port is ' + event.port.state);
 
-        // Disconnect if the current device is unplugged.
-        if (this.#device.input == event.port && event.port.state == 'disconnected')
-          this.disconnect();
+          // Disconnect if the current device is unplugged.
+          if (this.#device.input == event.port && event.port.state == 'disconnected')
+            this.disconnect();
+        }
 
         this.#select.update(this.#midi.getDevices('both'));
       });
-
-      this.#select.update(this.#midi.getDevices('both'));
 
       // Adding '?connect=<device name>' to the URL will try to connect to a device with the given name.
       if (connect) {
@@ -170,6 +174,14 @@ class V2Device extends V2WebModule {
       }
     });
 
+    V2Web.addElement(this.canvas, 'div', (e) => {
+      this.#version = e;
+      e.classList.add('mt-4');
+      e.classList.add('is-flex');
+      e.classList.add('is-justify-content-end');
+      e.innerHTML = '<a href="https://github.com/versioduo/configure" target="software">configure</a>, version ' + Number(document.querySelector('meta[name="version"]').content);
+    });
+
     this.attach();
     return Object.seal(this);
   }
@@ -179,7 +191,7 @@ class V2Device extends V2WebModule {
   }
 
   print(line) {
-    this.#log.print('<b>' + this.#device.input.name + '</b>: ' + line);
+    this.#log.print('<b>' + this.#device.getName() + '</b>: ' + line);
   }
 
   getData() {
@@ -191,22 +203,24 @@ class V2Device extends V2WebModule {
   }
 
   printDevice(line) {
-    this.#log.print('<b>' + this.#device.input.name + '</b> (' + this.#device.input.id + ', ' + this.#device.output.id + '): ' + line);
+    this.#log.print('<b>' + this.#device.getName() + '</b> (' + this.#device.getID() + '): ' + line);
   }
 
   // Print available MIDI ports. Their names might be different on different
   // operating systems.
   printStatus() {
+    this.#log.print('configure, version <b>' + Number(document.querySelector('meta[name="version"]').content) + '</b>');
+
     for (const device of this.#midi.getDevices().values()) {
       let what = (device.in && device.in == this.#device.input) ? 'Connected to' : 'Found';
       if (device.in && device.out)
-        this.#log.print(what + ' <b>' + device.in.name + '</b> (' + device.in.id + ', ' + device.out.id + ')');
+        this.#log.print(what + ' <b>' + device.in.name + '</b> (' + device.in.id + ':' + device.out.id + ')');
 
       else if (device.in)
-        this.#log.print(what + ' <b>' + device.in.name + '</b> (' + device.in.id + ', –)');
+        this.#log.print(what + ' <b>' + device.in.name + '</b> (' + device.in.id + ':)');
 
       else if (device.out)
-        this.#log.print(what + ' <b>' + device.out.name + '</b> (–, ' + device.out.id + ')');
+        this.#log.print(what + ' <b>' + device.out.name + '</b> (:' + device.out.id + ')');
     }
   }
 
@@ -620,7 +634,7 @@ class V2Device extends V2WebModule {
 
     this.#show(data);
 
-    // Detach the Log sectiona and attach it again after all other sections.
+    // Detach the Log section and attach it again after all other sections.
     this.#log.detach();
 
     for (const notifier of this.#notifiers.show)
@@ -631,6 +645,9 @@ class V2Device extends V2WebModule {
 
   // Connect or switch to a device.
   connect(device) {
+    if (this.#version)
+      this.#version.remove();
+
     this.#disconnectDevice();
 
     // Give this connection attempt a #sequence number, so we can 'cancel'
@@ -879,7 +896,7 @@ class V2Device extends V2WebModule {
         this.#update.notify.success('The firmware is up-to-date.');
 
       else
-        this.#update.notify.warn('Press <b>Upload</b> to install version <b>' + meta.version + '</b> of the firmware.');
+        this.#update.notify.warn('Press <b>Install</b> to update to version <b>' + meta.version + '</b> of the firmware.');
 
       this.#update.elementUpload.disabled = false;
     });
