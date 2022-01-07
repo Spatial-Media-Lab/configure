@@ -22,79 +22,33 @@ class V2SettingsModule {
     });
   }
 
-  getConfiguration(data) {
-    const configuration = this.setting.configuration;
+  // Access nested property; the path elements are separated by '/': 'devices[4]/name'.
+  setConfiguration(data, value) {
+    // Split at '/', and convert array indices to distinct path elements.
+    const path = this.setting.path.replaceAll('[', '/').replaceAll(']', '').split('/');
 
-    // configuration.devices[3].count[0]
-    if (configuration.element != null && configuration.index != null && configuration.field)
-      return data[configuration.path][configuration.index][configuration.field][configuration.element];
+    let object = data
+    for (let i = 0; i < path.length; i++) {
+      const element = path[i];
 
-    // configuration.devices[3].count
-    if (configuration.index != null && configuration.field)
-      return data[configuration.path][configuration.index][configuration.field];
+      if (value != undefined) {
+        // Assign the value to the last element.
+        if (i == path.length - 1)
+          object[element] = value;
 
-    // configuration.devices[3]
-    if (configuration.index != null)
-      return data[configuration.path][configuration.index];
+        // Create path; add empty array if the next element is an index.
+        else if (object[element] == undefined)
+          object[element] = (path[i + 1].match(/^[0-9]+$/)) ? [] : {};
+      }
 
-    // configuration.devices.count
-    if (configuration.field)
-      return data[configuration.path][configuration.field];
+      object = object[element];
+    }
 
-    // configuration.device
-    return data[configuration.path];
+    return object;
   }
 
-  setConfiguration(data, value) {
-    const configuration = this.setting.configuration;
-
-    // configuration.devices[3].count[0]
-    if (configuration.element != null && configuration.index != null && configuration.field) {
-      if (!data[configuration.path])
-        data[configuration.path] = [];
-
-      if (!data[configuration.path][configuration.index])
-        data[configuration.path][configuration.index] = {};
-
-      if (!data[configuration.path][configuration.index][configuration.field])
-        data[configuration.path][configuration.index][configuration.field] = [];
-
-      data[configuration.path][configuration.index][configuration.field][configuration.element] = value;
-      return;
-    }
-
-    // configuration.devices[3].count
-    if (configuration.index != null && configuration.field) {
-      if (!data[configuration.path])
-        data[configuration.path] = [];
-
-      if (!data[configuration.path][configuration.index])
-        data[configuration.path][configuration.index] = {};
-
-      data[configuration.path][configuration.index][configuration.field] = value;
-      return;
-    }
-
-    // configuration.devices[3]
-    if (configuration.index != null) {
-      if (!data[configuration.path])
-        data[configuration.path] = [];
-
-      data[configuration.path][configuration.index] = value;
-      return;
-    }
-
-    // configuration.devices.count
-    if (configuration.field) {
-      if (!data[configuration.path])
-        data[configuration.path] = {};
-
-      data[configuration.path][configuration.field] = value;
-      return;
-    }
-
-    // configuration.device
-    data[configuration.path] = value;
+  getConfiguration(data) {
+    return this.setConfiguration(data);
   }
 }
 
@@ -610,10 +564,11 @@ class V2SettingsDrum extends V2SettingsModule {
       let range = null;
 
       const updateNote = (number) => {
-        note.textContent = V2MIDI.Note.name(number);
+        note.textContent = V2MIDI.Note.name(number) + (V2MIDI.GM.Percussion.Name[number] ? ' – ' + V2MIDI.GM.Percussion.Name[number] : '');
         if (V2MIDI.Note.isBlack(number)) {
           note.classList.add('is-dark');
           note.classList.remove('has-background-light');
+
         } else {
           note.classList.remove('is-dark');
           note.classList.add('has-background-light');
@@ -631,7 +586,7 @@ class V2SettingsDrum extends V2SettingsModule {
 
         field.addButton((e) => {
           note = e;
-          e.classList.add('width-label');
+          e.classList.add('width-text-wide');
           e.classList.add('inactive');
           e.tabIndex = -1;
         });
@@ -721,53 +676,6 @@ class V2SettingsDrum extends V2SettingsModule {
       drum.sensitivity = this.#sensitivity.value
 
     this.setConfiguration(configuration, drum);
-  }
-}
-
-// The MIDI properties. Some devices support to configure the outgoing MIDI channel.
-class V2SettingsMIDI extends V2SettingsModule {
-  static type = 'midi';
-
-  #channel = Object.seal({
-    element: null
-  });
-
-  constructor(device, settings, canvas, setting, data) {
-    super(device, settings, setting);
-    super.addTitle(canvas, 'MIDI');
-
-    new V2WebField(canvas, (field) => {
-      field.addButton((e) => {
-        e.classList.add('width-label');
-        e.classList.add('has-background-grey-lighter');
-        e.classList.add('inactive');
-        e.textContent = 'Channel';
-        e.tabIndex = -1;
-      });
-
-      field.addElement('span', (e) => {
-        e.classList.add('select');
-
-        V2Web.addElement(e, 'select', (select) => {
-          this.#channel.element = select;
-
-          for (let i = 1; i < 17; i++) {
-            V2Web.addElement(select, 'option', (e) => {
-              e.value = i;
-              e.text = i;
-              if (i == this.getConfiguration(data.configuration))
-                e.selected = true;
-            });
-          }
-        });
-      });
-    });
-
-    return Object.seal(this);
-  }
-
-  save(configuration) {
-    this.setConfiguration(configuration, this.#channel.element.value);
   }
 }
 
@@ -927,6 +835,7 @@ class V2SettingsNumber extends V2SettingsModule {
     if (setting.title)
       super.addTitle(canvas, setting.title);
 
+    this.#number = Number(this.getConfiguration(data.configuration));
     let number = null;
     let range = null;
     const min = (setting.min != null) ? setting.min : 0;
@@ -944,18 +853,44 @@ class V2SettingsNumber extends V2SettingsModule {
       });
 
       if (!select) {
+        const update = (value) => {
+          if (value == null || value < 0 || value > 127)
+            return;
+
+          this.#number = Number(value);
+          number.value = value;
+          range.value = value;
+        }
+
         field.addInput('number', (e) => {
           number = e;
-          e.classList.add('width-number');
+          e.classList.add((step == 1) ? 'width-number' : 'width-number-wide');
           e.min = min
           e.max = max;
           e.step = step;
-          e.value = this.getConfiguration(data.configuration);
+          e.value = this.#number;
           e.addEventListener('input', () => {
-            this.#number = e.value;
-            range.value = e.value;
+            update(e.value);
           });
         });
+
+        if (step == 1) {
+          field.addButton((e) => {
+            e.textContent = '-';
+            e.style.width = '3rem';
+            e.addEventListener('click', () => {
+              update(this.#number - 1);
+            });
+          });
+
+          field.addButton((e) => {
+            e.textContent = '+';
+            e.style.width = '3rem';
+            e.addEventListener('click', () => {
+              update(this.#number + 1);
+            });
+          });
+        }
 
       } else {
         field.addElement('span', (e) => {
@@ -966,13 +901,13 @@ class V2SettingsNumber extends V2SettingsModule {
               V2Web.addElement(select, 'option', (e) => {
                 e.value = i;
                 e.text = i;
-                if (i == this.getConfiguration(data.configuration))
+                if (i == this.#number)
                   e.selected = true;
               });
             }
 
             select.addEventListener('change', () => {
-              this.#number = select.value;
+              this.#number = Number(select.value);
             });
           });
         });
@@ -989,7 +924,7 @@ class V2SettingsNumber extends V2SettingsModule {
         e.step = number.step;
         e.value = number.value;
         e.addEventListener('input', () => {
-          this.#number = e.value;
+          this.#number = Number(e.value);
           number.value = e.value;
         });
       });
@@ -1055,6 +990,8 @@ class V2SettingsUSB extends V2SettingsModule {
   static type = 'usb';
 
   #name = null;
+  #vid = null;
+  #pid = null;
   #ports = null;
 
   constructor(device, settings, canvas, setting, data) {
@@ -1079,6 +1016,52 @@ class V2SettingsUSB extends V2SettingsModule {
         e.placeholder = data.metadata.product;
       });
     });
+
+    const usbID = (number) => {
+      return ('0000' + number.toString(16)).substr(-4)
+    };
+
+    if (data.configuration.usb.vid != null) {
+      new V2WebField(canvas, (field) => {
+        field.addButton((e) => {
+          e.classList.add('width-label');
+          e.classList.add('has-background-grey-lighter');
+          e.classList.add('inactive');
+          e.textContent = 'Vendor ID';
+          e.tabIndex = -1;
+        });
+
+        field.addInput('text', (e) => {
+          this.#vid = e;
+          e.classList.add('width-number');
+          e.maxLength = 4;
+          if (data.configuration.usb.vid > 0)
+            e.value = usbID(data.configuration.usb.vid);
+          e.placeholder = usbID(data.system.usb.vid);
+        });
+      });
+    }
+
+    if (data.configuration.usb.pid != null) {
+      new V2WebField(canvas, (field) => {
+        field.addButton((e) => {
+          e.classList.add('width-label');
+          e.classList.add('has-background-grey-lighter');
+          e.classList.add('inactive');
+          e.textContent = 'Product ID';
+          e.tabIndex = -1;
+        });
+
+        field.addInput('text', (e) => {
+          this.#pid = e;
+          e.classList.add('width-number');
+          e.maxLength = 4;
+          if (data.configuration.usb.pid > 0)
+            e.value = usbID(data.configuration.usb.pid);
+          e.placeholder = usbID(data.system.usb.pid);
+        });
+      });
+    }
 
     // The number of MIDI ports.
     if (data.system.ports && data.system.ports.announce > 0) {
@@ -1117,6 +1100,12 @@ class V2SettingsUSB extends V2SettingsModule {
     configuration.usb = {
       'name': this.#name.value
     };
+
+    if (this.#vid)
+      configuration.usb.vid = parseInt(this.#vid.value || 0, 16);
+
+    if (this.#pid)
+      configuration.usb.pid = parseInt(this.#pid.value || 0, 16);
 
     if (this.#ports)
       configuration.usb.ports = Number(this.#ports.value);

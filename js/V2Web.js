@@ -72,6 +72,10 @@ class V2Web {
     const burger = document.querySelector('.navbar-burger');
     const menu = document.querySelector('.navbar-menu');
 
+    // Hide the burger when the menu is (still) empty.
+    if (!document.querySelector('.navbar-start').firstChild)
+      burger.style.visibility = 'hidden';
+
     // Toggle menu with burger.
     burger.addEventListener('click', () => {
       burger.classList.toggle('is-active');
@@ -94,6 +98,9 @@ class V2Web {
   static addNavigation(id, title, target) {
     const navbar = document.querySelector('.navbar-start');
 
+    if (!navbar.firstChild)
+      document.querySelector('.navbar-burger').style.visibility = '';
+
     this.addElement(navbar, 'a', (e) => {
       e.id = 'navigation-' + id;
       e.classList.add('navbar-item');
@@ -106,6 +113,9 @@ class V2Web {
     const e = document.querySelector('#navigation-' + id);
     if (e)
       e.remove();
+
+    if (!document.querySelector('.navbar-start').firstChild)
+      document.querySelector('.navbar-burger').style.visibility = 'hidden';
   }
 
   static addElement(element, type, handler) {

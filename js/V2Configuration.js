@@ -82,7 +82,6 @@ class V2ConfigurationSettings {
     this.register(V2SettingsColor);
     this.register(V2SettingsController);
     this.register(V2SettingsDrum);
-    this.register(V2SettingsMIDI);
     this.register(V2SettingsNote);
     this.register(V2SettingsToggle);
     this.register(V2SettingsNumber);
@@ -131,12 +130,15 @@ class V2ConfigurationSettings {
     this.#sections.push(section);
 
     // Iterate over the device's 'settings' entries. If we find a matching module,
-    // instantiate it and show the content.
+    // instantiate it and show its controls.
     if (data.settings) {
       for (const setting of data.settings) {
         const module = this.#modules[setting.type];
         if (!module)
-          return;
+          continue;
+
+        if ('save' in module.prototype && !setting.path)
+          continue;
 
         const section = new module(this.#device, this, this.#canvas, setting, data);
         this.#sections.push(section);

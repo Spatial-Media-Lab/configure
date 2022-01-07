@@ -203,7 +203,6 @@ class V2Input extends V2WebModule {
             if (V2MIDI.Note.isBlack(note))
               e.classList.add('is-dark');
 
-
             e.addEventListener('mousedown', () => {
               this.#device.sendNote(this.#channel, note, this.#notes.controls.velocity);
             });
@@ -526,6 +525,7 @@ class V2Input extends V2WebModule {
       V2Web.addButton(buttons, (e) => {
         e.textContent = 'Reset';
         e.addEventListener('click', () => {
+          this.#channel = 0;
           this.#device.sendReset();
         });
       });

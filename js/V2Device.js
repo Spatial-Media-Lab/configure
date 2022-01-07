@@ -154,6 +154,7 @@ class V2Device extends V2WebModule {
             return false;
 
           this.#log.print('Trying to connect to <b>' + name + '</b> ...');
+          this.#select.update(this.#midi.getDevices('both'));
           this.#select.select(device);
           this.connect(device);
           return true;
