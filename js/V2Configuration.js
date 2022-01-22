@@ -331,10 +331,17 @@ class V2ConfigurationSystem {
     };
 
     const json = JSON.stringify(config, null, '  ');
-    let name = this.#device.getData().metadata.product;
-    if (this.#device.getData().metadata.name)
-      name += '-' + this.#device.getData().metadata.name;
-    name += '.json';
+
+    let filename = this.#device.getData().metadata.product;
+    const name = this.#device.getData().system.name;
+    if (name) {
+      if (name.startsWith(filename))
+        filename = name;
+
+      else
+        filename += '-' + name;
+    }
+    filename = filename.replace(/ /g, '-') + '.json';
 
     const url = URL.createObjectURL(new Blob([json], {
       type: 'application/json'
@@ -343,7 +350,7 @@ class V2ConfigurationSystem {
     // Temporarily create an anchor and download the file as URI.
     const a = document.createElement('a');
     a.href = url;
-    a.download = name.replace(/ /g, '-');
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   }

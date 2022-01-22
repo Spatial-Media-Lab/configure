@@ -14,6 +14,7 @@ class V2Device extends V2WebModule {
   #details = null;
   #update = Object.seal({
     element: null,
+    elementSelect: null,
     elementNewFirmware: null,
     elementUpload: null,
     elementProgress: null,
@@ -107,7 +108,8 @@ class V2Device extends V2WebModule {
         return;
       }
 
-      if (!data['com.versioduo.device']) {
+      const device = data['com.versioduo.device'];
+      if (!device) {
         this.printDevice('Received data for unknown interface');
         return;
       }
@@ -117,7 +119,7 @@ class V2Device extends V2WebModule {
         this.#timeout = null;
       }
 
-      this.#handleReply(data['com.versioduo.device']);
+      this.#handleReply(device);
     });
 
     this.#midi.setup((error) => {
@@ -485,7 +487,7 @@ class V2Device extends V2WebModule {
     // The Update tab.
     V2Web.addButtons(this.#update.element, (buttons) => {
       V2Web.addButton(buttons, (e) => {
-        e.textContent = 'Enable Ports';
+        e.textContent = 'Access Ports';
         if (!data.system.ports || data.system.ports.announce == 0)
           e.disabled = true;
         e.addEventListener('click', () => {
@@ -525,58 +527,9 @@ class V2Device extends V2WebModule {
 
     this.#update.notify = new V2WebNotify(this.#update.element);
 
-    V2Web.addElement(this.#update.element, 'p', (e) => {
-      e.classList.add('subtitle');
-      e.textContent = 'Firmware';
-    });
-
     V2Web.addElement(this.#update.element, 'div', (e) => {
-      e.classList.add('table-container');
-
-      V2Web.addElement(e, 'table', (table) => {
-        table.classList.add('table');
-        table.classList.add('is-fullwidth');
-        table.classList.add('is-striped');
-        table.classList.add('is-narrow');
-
-        V2Web.addElement(table, 'tbody', (body) => {
-          V2Web.addElement(body, 'tr', (row) => {
-            V2Web.addElement(row, 'td', (e) => {
-              e.textContent = 'Version';
-            });
-            V2Web.addElement(row, 'td', (e) => {
-              e.textContent = this.#data.metadata.version;
-            });
-          });
-
-          V2Web.addElement(body, 'tr', (row) => {
-            V2Web.addElement(row, 'td', (e) => {
-              e.textContent = 'Id';
-            });
-            V2Web.addElement(row, 'td', (e) => {
-              e.textContent = this.#data.system.firmware.id;
-            });
-          });
-
-          V2Web.addElement(body, 'tr', (row) => {
-            V2Web.addElement(row, 'td', (e) => {
-              e.textContent = 'Board';
-            });
-            V2Web.addElement(row, 'td', (e) => {
-              e.textContent = this.#data.system.firmware.board;
-            });
-          });
-
-          V2Web.addElement(body, 'tr', (row) => {
-            V2Web.addElement(row, 'td', (e) => {
-              e.textContent = 'Hash';
-            });
-            V2Web.addElement(row, 'td', (e) => {
-              e.textContent = this.#data.system.firmware.hash;
-            });
-          });
-        });
-      });
+      this.#update.elementSelect = e;
+      e.classList.add('mb-5');
     });
 
     V2Web.addElement(this.#update.element, 'div', (e) => {
@@ -711,49 +664,100 @@ class V2Device extends V2WebModule {
       .then((json) => {
         this.printDevice('Retrieved firmware update index');
 
-        const update = json[this.#data.system.firmware.id];
-        if (!update) {
+        let updates = json[this.#data.system.firmware.id];
+        if (!updates) {
+          this.#update.notify.warn('No firmware update found for this device.');
           this.printDevice('No firmware update found for this device.');
           return;
         }
 
-        if (this.#data.system.board != update.board) {
+        updates = updates.filter((update) => {
+          return update.board == this.#data.system.board;
+        });
+
+        if (updates.length == 0) {
+          this.#update.notify.warn('No firmware update found for this board.');
           this.printDevice('No firmware update found for this board.');
           return;
         }
 
-        if (this.#data.system.firmware.hash == update.hash) {
-          this.#update.notify.success('The firmware is up-to-date.');
-          return;
-        }
+        // Find the largest version number.
+        updates.sort((a, b) => {
+          return b.version - a.version;
+        });
 
-        if (this.#data.system.firmware.version > update.version) {
+        if (this.#data.system.firmware.version > updates[0].version)
           this.#update.notify.warn('A more recent firmware is already installed.');
-          return;
-        }
 
-        this.printDevice('Requesting firmware image: <b>' + this.#data.system.firmware.download + '/' + update.file + '</b>');
+        while (this.#update.elementSelect.firstChild)
+          this.#update.elementSelect.firstChild.remove();
 
-        fetch(this.#data.system.firmware.download + '/' + update.file, {
-            cache: 'no-cache'
-          })
-          .then((response) => {
-            if (!response.ok)
-              throw new Error('Status=' + response.status);
+        V2Web.addElement(this.#update.elementSelect, 'p', (e) => {
+          e.classList.add('title');
+          e.classList.add('subsection');
+          e.textContent = 'Firmware Update';
+        });
 
-            return response.arrayBuffer();
-          })
-          .then((buffer) => {
-            this.printDevice('Retrieved firmware image, length=' + buffer.byteLength);
-            this.#showFirmware(new Uint8Array(buffer));
-          })
-          .catch((error) => {
-            this.printDevice('Error requesting firmware image: ' + error.message);
-          })
+        new V2WebField(this.#update.elementSelect, (field) => {
+          field.addButton((e) => {
+            e.classList.add('width-label');
+            e.classList.add('has-background-grey-lighter');
+            e.classList.add('inactive');
+            e.textContent = 'Version';
+            e.tabIndex = -1;
+          });
+
+          field.addElement('span', (e) => {
+            e.classList.add('select');
+
+            V2Web.addElement(e, 'select', (select) => {
+              if (updates.length == 1)
+                select.disabled = true;
+
+              for (let i = 0; i < updates.length; i++) {
+                V2Web.addElement(select, 'option', (e) => {
+                  e.value = i;
+                  e.text = updates[i].version;
+                });
+              }
+
+              select.addEventListener('change', () => {
+                this.#loadFirmware(this.#data.system.firmware.download + '/' + updates[select.value].file);
+              });
+            });
+          });
+        });
+
+        if (this.#data.system.firmware.hash == updates[0].hash)
+          this.#update.notify.success('The firmware is up-to-date.');
+
+        else
+          this.#loadFirmware(this.#data.system.firmware.download + '/' + updates[0].file);
 
       })
       .catch((error) => {
         this.printDevice('Error requesting firmware information: ' + error.message);
+      })
+  }
+
+  #loadFirmware(filename) {
+    this.printDevice('Requesting firmware image: <b>' + filename + '</b>');
+
+    fetch(filename, {
+        cache: 'no-cache'
+      })
+      .then((response) => {
+        if (!response.ok)
+          throw new Error('Status=' + response.status);
+
+        return response.arrayBuffer();
+      })
+      .then((buffer) => {
+        this.printDevice('Retrieved firmware image, length=' + buffer.byteLength);
+        this.#showFirmware(new Uint8Array(buffer));
+      })
+      .catch((error) => {
+        this.printDevice('Error requesting firmware image: ' + error.message);
       })
   }
 
@@ -812,18 +816,14 @@ class V2Device extends V2WebModule {
       return;
     }
 
-    if (meta.interface != 'com.versioduo.firmware') {
+    const firmware = meta['com.versioduo.firmware'];
+    if (!firmware) {
       this.#update.notify.warn('Unknown file type. Missing metadata.');
       return;
     }
 
     // We found metadata in the loaded image.
     this.#update.firmware.bytes = bytes;
-
-    V2Web.addElement(this.#update.elementNewFirmware, 'p', (e) => {
-      e.classList.add('subtitle');
-      e.textContent = 'Firmware Update';
-    });
 
     let elementHash = null;
 
@@ -842,7 +842,7 @@ class V2Device extends V2WebModule {
               e.textContent = 'Version';
             });
             V2Web.addElement(row, 'td', (e) => {
-              e.textContent = meta.version;
+              e.textContent = firmware.version;
             });
           });
 
@@ -851,7 +851,7 @@ class V2Device extends V2WebModule {
               e.textContent = 'Id';
             });
             V2Web.addElement(row, 'td', (e) => {
-              e.textContent = meta.id;
+              e.textContent = firmware.id;
             });
           });
 
@@ -860,7 +860,7 @@ class V2Device extends V2WebModule {
               e.textContent = 'Board';
             });
             V2Web.addElement(row, 'td', (e) => {
-              e.textContent = meta.board;
+              e.textContent = firmware.board;
             });
           });
 
@@ -883,21 +883,22 @@ class V2Device extends V2WebModule {
       }).join('');
       this.#update.firmware.hash = hex;
       elementHash.textContent = hex;
+      const backup = this.#data.system.eeprom.used > 0 ? ' Please backup the configuration before the installation.' : '';
 
-      if (this.#data.system.board && meta.board != this.#data.system.board)
-        this.#update.notify.error('The firmware update is for a different board which has the name <b>' + meta.board + '</>.');
+      if (this.#data.system.board && firmware.board != this.#data.system.board)
+        this.#update.notify.error('The firmware update is for a different board which has the name <b>' + firmware.board + '</>.');
 
-      else if (meta.id != this.#data.system.firmware.id)
-        this.#update.notify.warn('The firmware update appears to provide a different functionality, it has the name <b>' + meta.id + '</>.');
+      else if (firmware.id != this.#data.system.firmware.id)
+        this.#update.notify.warn('The firmware update appears to provide a different functionality, it has the name <b>' + firmware.id + '</>.');
 
-      else if (meta.version < this.#data.metadata.version)
-        this.#update.notify.warn('The firmware update is version <b>' + meta.version + '</b>, which is older than the current firmware.');
+      else if (firmware.version < this.#data.metadata.version)
+        this.#update.notify.warn('The firmware is older than the currently installed version.' + backup);
 
       else if (this.#update.firmware.hash == this.#data.system.firmware.hash)
-        this.#update.notify.success('The firmware is up-to-date.');
+        this.#update.notify.info('This firmware is currently installed.');
 
       else
-        this.#update.notify.warn('Press <b>Install</b> to update to version <b>' + meta.version + '</b> of the firmware.');
+        this.#update.notify.info('A firmware update is available.' + backup);
 
       this.#update.elementUpload.disabled = false;
     });

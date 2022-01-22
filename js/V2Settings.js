@@ -843,6 +843,15 @@ class V2SettingsNumber extends V2SettingsModule {
     const step = (setting.step != null) ? setting.step : 1;
     const select = setting.input == 'select';
 
+    const update = (value) => {
+      if (value == null || value < min || value > max)
+        return;
+
+      this.#number = Number(value);
+      number.value = value;
+      range.value = value;
+    }
+
     new V2WebField(canvas, (field) => {
       field.addButton((e) => {
         e.classList.add('width-label');
@@ -853,15 +862,6 @@ class V2SettingsNumber extends V2SettingsModule {
       });
 
       if (!select) {
-        const update = (value) => {
-          if (value == null || value < 0 || value > 127)
-            return;
-
-          this.#number = Number(value);
-          number.value = value;
-          range.value = value;
-        }
-
         field.addInput('number', (e) => {
           number = e;
           e.classList.add((step == 1) ? 'width-number' : 'width-number-wide');
@@ -924,8 +924,7 @@ class V2SettingsNumber extends V2SettingsModule {
         e.step = number.step;
         e.value = number.value;
         e.addEventListener('input', () => {
-          this.#number = Number(e.value);
-          number.value = e.value;
+          update(e.value);
         });
       });
     }
