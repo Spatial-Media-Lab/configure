@@ -1,4 +1,4 @@
-// © Kay Sievers <kay@vrfy.org>, 2019-2021
+// © Kay Sievers <kay@versioduo.com>, 2019-2022
 // SPDX-License-Identifier: Apache-2.0
 
 // Show HTML formatted log messages.

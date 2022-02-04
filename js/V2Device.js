@@ -1,4 +1,4 @@
-// © Kay Sievers <kay@vrfy.org>, 2019-2021
+// © Kay Sievers <kay@versioduo.com>, 2019-2022
 // SPDX-License-Identifier: Apache-2.0
 
 class V2Device extends V2WebModule {
@@ -395,6 +395,8 @@ class V2Device extends V2WebModule {
       this.#tabs.resetTab('information');
       this.#tabs.resetTab('details');
       this.#tabs.resetTab('update');
+      this.#update.firmware.bytes = null;
+      this.#update.firmware.hash = null;
     }
 
     // The Information tab.
@@ -536,7 +538,7 @@ class V2Device extends V2WebModule {
       this.#update.elementNewFirmware = e;
     });
 
-    if (!this.#tabs.current)
+    if (!this.#tabs.current || this.#tabs.current == 'update')
       this.#tabs.switchTab('information');
   }
 

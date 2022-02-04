@@ -1,4 +1,4 @@
-// © Kay Sievers <kay@vrfy.org>, 2021
+// © Kay Sievers <kay@versioduo.com>, 2021
 // SPDX-License-Identifier: Apache-2.0
 
 const name = '__NAME__';

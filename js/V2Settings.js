@@ -1,4 +1,4 @@
-// © Kay Sievers <kay@vrfy.org>, 2019-2021
+// © Kay Sievers <kay@versioduo.com>, 2019-2022
 // SPDX-License-Identifier: Apache-2.0
 
 class V2SettingsModule {
@@ -493,6 +493,7 @@ class V2SettingsDrum extends V2SettingsModule {
 
   #controller = null;
   #note = null;
+  #aftertouch = null;
   #sensitivity = null;
 
   constructor(device, settings, canvas, setting, data) {
@@ -620,6 +621,32 @@ class V2SettingsDrum extends V2SettingsModule {
       });
     }
 
+    if (drum.aftertouch != null) {
+      new V2WebField(canvas, (field) => {
+        field.addButton((e) => {
+          e.classList.add('width-label');
+          e.classList.add('has-background-grey-lighter');
+          e.classList.add('inactive');
+          e.textContent = 'Aftertouch';
+          e.tabIndex = -1;
+        });
+
+        field.addElement('label', (label) => {
+          label.classList.add('switch');
+
+          V2Web.addElement(label, 'input', (e) => {
+            this.#aftertouch = e;
+            e.type = 'checkbox';
+            e.checked = drum.aftertouch;
+          });
+
+          V2Web.addElement(label, 'span', (e) => {
+            e.classList.add('check');
+          });
+        });
+      });
+    }
+
     if (drum.sensitivity != null) {
       let sensitivity = null;
       let range = null;
@@ -671,6 +698,9 @@ class V2SettingsDrum extends V2SettingsModule {
 
     if (this.#note)
       drum.note = this.#note.value
+
+    if (this.#aftertouch)
+      drum.aftertouch = this.#aftertouch.checked
 
     if (this.#sensitivity)
       drum.sensitivity = this.#sensitivity.value
