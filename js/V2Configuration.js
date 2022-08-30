@@ -4,6 +4,9 @@
 class V2Configuration extends V2WebModule {
   #device = null;
   #tabs = null;
+  #info = Object.seal({
+    element: null
+  });
   #settings = Object.seal({
     element: null,
     object: null
@@ -20,6 +23,10 @@ class V2Configuration extends V2WebModule {
     new V2WebTabs(this.canvas, (tabs) => {
       this.#tabs = tabs;
 
+      tabs.addTab('info', 'Information', (e) => {
+        this.#info.element = e;
+      });
+
       tabs.addTab('settings', 'Settings', (e) => {
         this.#settings.element = e;
         this.#settings.object = new V2ConfigurationSettings(device, this.#settings.element);
@@ -32,13 +39,30 @@ class V2Configuration extends V2WebModule {
     });
 
     this.#device.addNotifier('show', (data) => {
+      this.#tabs.resetTab('info');
       this.#tabs.resetTab('settings');
       this.#tabs.resetTab('system');
+
+      V2Web.addMarkup(this.#info.element, 2,
+        'In Settings, the device can be configured. Changes will not be stored ' +
+        'or modify the device\'s behavior until the Save button is pressed. Some ' +
+        'changes require a device reboot to become active.\n' +
+        'In System, the current configuration can be backed-up as a human ' +
+        'readable text file. Or the device reset to its factory defaults.');
+
+      if (data.help?.configuration) {
+        V2Web.addElement(this.#info.element, 'hr', (e) => {
+          e.classList.add('break');
+        });
+
+        V2Web.addMarkup(this.#info.element, 2, data.help.configuration);
+      }
+
       this.#settings.object.show(data);
       this.#system.object.show(data.configuration);
 
       if (!this.#tabs.current)
-        this.#tabs.switchTab('settings');
+        this.#tabs.switchTab('info');
 
       this.attach();
     });
@@ -47,6 +71,7 @@ class V2Configuration extends V2WebModule {
       this.#tabs.switchTab();
       this.#settings.object.clear();
       this.#system.object.clear();
+      this.#tabs.resetTab('info');
       this.#tabs.resetTab('settings');
       this.#tabs.resetTab('system');
 
@@ -85,6 +110,7 @@ class V2ConfigurationSettings {
     this.register(V2SettingsNote);
     this.register(V2SettingsToggle);
     this.register(V2SettingsNumber);
+    this.register(V2SettingsPulse);
     this.register(V2SettingsText);
     this.register(V2SettingsTitle);
     this.register(V2SettingsUSB);
@@ -276,9 +302,9 @@ class V2ConfigurationSystem {
     }
   }
 
-  // Click to maximize, triple-click to minimize.
+  // Click to maximize, many-click to minimize.
   #expand(event) {
-    if (this.#maximized && event.detail == 3) {
+    if (this.#maximized && event.detail > 3) {
       this.#elementJSON.setSelectionRange(1, 1);
       this.#maximized = false;
 

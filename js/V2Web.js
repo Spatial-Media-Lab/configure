@@ -196,6 +196,26 @@ class V2Web {
 
     element.appendChild(e);
   }
+
+  // Split newline character into paragraphs, substitute # heading level marker.
+  static addMarkup(element, headingBase, text) {
+    for (const line of text.split("\n")) {
+      const match = line.match(/^#+/);
+      if (match) {
+        const heading = match[0].length;
+        V2Web.addElement(element, 'h' + (headingBase + heading), (e) => {
+          e.classList.add('subtitle');
+          e.classList.add('mb-2');
+          e.textContent = line.slice(heading).trim();
+        });
+
+      } else
+        V2Web.addElement(element, 'p', (e) => {
+          e.classList.add('content');
+          e.textContent = line;
+        });
+    }
+  }
 }
 
 // Inline element to show a notification with a close button.

@@ -90,8 +90,8 @@ class V2Device extends V2WebModule {
         '</i> with value <i>' + value + '</i> on channel <i>#' + (channel + 1) + '</i>');
     });
 
-    this.#device.addNotifier('aftertouchChannel', (pressure) => {
-      this.print('Received <b>Aftertouch Channel</b> with value <i>' + value + '</i> on channel <i>#' + (channel + 1) + '</i>');
+    this.#device.addNotifier('aftertouchChannel', (channel, pressure) => {
+      this.print('Received <b>Aftertouch Channel</b> with pressure <i>' + pressure + '</i> on channel <i>#' + (channel + 1) + '</i>');
     });
 
     this.#device.addNotifier('systemExclusive', (message) => {
@@ -290,30 +290,11 @@ class V2Device extends V2WebModule {
     this.sendGetAll();
   }
 
-  sendReboot() {
-    this.printDevice('Calling <b>reboot()</>');
+  sendReboot(ports = false) {
+    const method = ports ? 'rebootWithPorts' : 'reboot';
+    this.printDevice('Calling <b>' + method + '()</>');
     this.sendRequest({
-      'method': 'reboot'
-    });
-    this.disconnect();
-  }
-
-  // Reboot the device and temporarily create MIDI ports/virtual
-  // cables to access children devices. The device can describe itself
-  // how many children devices are expected to be connected.
-  rebootWithPorts() {
-    let ports = this.#data.system.ports.announce;
-
-    // Ports enabled but no custom number of ports specified, use the maximum.
-    if (ports == 1)
-      ports = 16;
-
-    this.printDevice('Calling <b>reboot()</>');
-    this.sendRequest({
-      'method': 'reboot',
-      'reboot': {
-        'ports': ports
-      }
+      'method': method
     });
     this.disconnect();
   }
@@ -401,6 +382,30 @@ class V2Device extends V2WebModule {
 
     // The Information tab.
     V2Web.addElement(this.#info, 'div', (container) => {
+      container.classList.add('mb-4');
+
+      V2Web.addElement(container, 'h2', (e) => {
+        e.classList.add('title');
+        e.textContent = data.metadata.product;
+      });
+
+      V2Web.addElement(container, 'p', (e) => {
+        e.classList.add('subtitle');
+        e.textContent = data.metadata.description;
+      });
+
+      if (data.help?.device) {
+        const paragraphs = data.help.device.split("\n");
+        for (const p of paragraphs) {
+          V2Web.addElement(container, 'p', (e) => {
+            e.classList.add('content');
+            e.textContent = p;
+          });
+        }
+      }
+    });
+
+    V2Web.addElement(this.#info, 'div', (container) => {
       container.classList.add('table-container');
 
       V2Web.addElement(container, 'table', (e) => {
@@ -411,6 +416,9 @@ class V2Device extends V2WebModule {
 
         V2Web.addElement(e, 'tbody', (body) => {
           for (const key of Object.keys(data.metadata)) {
+            if (key == 'product' || key == 'description')
+              continue;
+
             const name = key.charAt(0).toUpperCase() + key.slice(1);
             const value = data.metadata[key];
 
@@ -489,11 +497,19 @@ class V2Device extends V2WebModule {
     // The Update tab.
     V2Web.addButtons(this.#update.element, (buttons) => {
       V2Web.addButton(buttons, (e) => {
-        e.textContent = 'Access Ports';
-        if (!data.system.ports || data.system.ports.announce == 0)
-          e.disabled = true;
+        e.textContent = 'Reboot';
         e.addEventListener('click', () => {
-          this.rebootWithPorts();
+          this.sendReboot();
+        });
+      });
+
+      V2Web.addButton(buttons, (e) => {
+        e.textContent = 'Access Ports';
+        if (!data.system.hardware?.usb?.ports?.access && !data.system.usb?.ports?.access)
+          e.disabled = true;
+
+        e.addEventListener('click', () => {
+          this.sendReboot(true);
         });
       });
 
@@ -571,7 +587,7 @@ class V2Device extends V2WebModule {
       return;
     }
 
-    if (data.firmware && data.firmware.status) {
+    if (data.firmware?.status) {
       this.#uploadFirmwareBlock(data.firmware.status);
       return;
     }
@@ -646,10 +662,7 @@ class V2Device extends V2WebModule {
 
   // Load 'index.json' and from the 'download' URL and check if there is a firmware update available.
   #loadFirmwareIndex() {
-    if (!this.#data.system || !this.#data.system.firmware.download)
-      return;
-
-    if (this.#update.firmware.bytes)
+    if (!this.#data.system?.firmware?.download)
       return;
 
     this.printDevice('Requesting firmware information: <b>' + this.#data.system.firmware.download + '/index.json</b>');
@@ -673,9 +686,12 @@ class V2Device extends V2WebModule {
           return;
         }
 
-        updates = updates.filter((update) => {
-          return update.board == this.#data.system.board;
-        });
+        // Remove firmware images for different boards.
+        if (this.#data.system.hardware?.board) {
+          updates = updates.filter((update) => {
+            return update.board == this.#data.system.hardware.board;
+          });
+        }
 
         if (updates.length == 0) {
           this.#update.notify.warn('No firmware update found for this board.');
@@ -885,9 +901,9 @@ class V2Device extends V2WebModule {
       }).join('');
       this.#update.firmware.hash = hex;
       elementHash.textContent = hex;
-      const backup = this.#data.system.eeprom.used > 0 ? ' Please backup the configuration before the installation.' : '';
+      const backup = this.#data.system.hardware?.eeprom?.used ? ' Please backup the configuration before the installation.' : '';
 
-      if (this.#data.system.board && firmware.board != this.#data.system.board)
+      if (this.#data.system.hardware?.board && firmware.board != this.#data.system.hardware.board)
         this.#update.notify.error('The firmware update is for a different board which has the name <b>' + firmware.board + '</>.');
 
       else if (firmware.id != this.#data.system.firmware.id)

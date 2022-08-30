@@ -14,12 +14,29 @@ class V2SettingsModule {
     return Object.seal(this);
   }
 
-  addTitle(canvas, text) {
+  addHeading(canvas, text) {
     V2Web.addElement(canvas, 'h3', (e) => {
       e.classList.add('title');
       e.classList.add('subsection');
       e.textContent = text;
     });
+  }
+
+  addSection(canvas, setting) {
+    if (setting.title) {
+      V2Web.addElement(canvas, 'hr', (e) => {
+        e.classList.add('subsection');
+      });
+
+      this.addHeading(canvas, setting.title);
+      return;
+    }
+
+    if (setting.ruler) {
+      V2Web.addElement(canvas, 'hr', (e) => {
+        e.classList.add('break');
+      });
+    }
   }
 
   // Access nested property; the path elements are separated by '/': 'devices[4]/name'.
@@ -74,7 +91,7 @@ class V2SettingsCalibration extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    super.addTitle(canvas, 'Calibration');
+    super.addSection(canvas, setting);
 
     // Find current program.
     if (data.input.programs) {
@@ -155,7 +172,7 @@ class V2SettingsCalibration extends V2SettingsModule {
           e.classList.add('width-label');
           e.classList.add('inactive');
           e.tabIndex = -1;
-          e.textContent = V2MIDI.Note.name(note);
+          e.textContent = V2MIDI.Note.name(note) + ' (' + note + ')';
           e.classList.add(V2MIDI.Note.isBlack(note) ? 'is-dark' : 'has-background-grey-lighter');
         });
 
@@ -251,8 +268,7 @@ class V2SettingsColor extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    if (setting.title)
-      super.addTitle(canvas, setting.title);
+    super.addSection(canvas, setting);
 
     this.#configuration = setting.configuration;
     V2Web.addButtons(canvas, (buttons) => {
@@ -427,8 +443,7 @@ class V2SettingsController extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    if (setting.title)
-      super.addTitle(canvas, setting.title);
+    super.addSection(canvas, setting);
 
     let text = null;
     let range = null;
@@ -445,7 +460,7 @@ class V2SettingsController extends V2SettingsModule {
         e.classList.add('has-background-grey-lighter');
         e.classList.add('inactive');
         e.tabIndex = -1;
-        e.textContent = 'CC';
+        e.textContent = setting.label || 'Controller';
       });
 
       field.addButton((e) => {
@@ -491,58 +506,40 @@ class V2SettingsController extends V2SettingsModule {
 class V2SettingsDrum extends V2SettingsModule {
   static type = 'drum';
 
-  #controller = null;
+  #sensitivity = null;
   #note = null;
   #aftertouch = null;
-  #sensitivity = null;
+  #controller = null;
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    if (setting.title)
-      super.addTitle(canvas, setting.title);
+    super.addSection(canvas, setting);
 
     const drum = this.getConfiguration(data.configuration);
-    if (drum.controller != null) {
-      let text = null;
+    if (drum.sensitivity != null) {
+      let sensitivity = null;
       let range = null;
-
-      const updateController = (number) => {
-        if (number > 0)
-          text.textContent = V2MIDI.CC.Name[number] || 'CC ' + number;
-
-        else
-          text.textContent = 'Disabled';
-      };
 
       new V2WebField(canvas, (field) => {
         field.addButton((e) => {
+          sensitivity = e;
           e.classList.add('width-label');
+          e.classList.add('inactive');
           e.classList.add('has-background-grey-lighter');
-          e.classList.add('inactive');
           e.tabIndex = -1;
-          e.textContent = 'Controller';
-        });
-
-        field.addButton((e) => {
-          text = e;
-          e.classList.add('width-text-wide');
-          e.classList.add('has-background-light');
-          e.classList.add('inactive');
-          e.tabIndex = -1;
+          e.textContent = 'Sensitivity';
         });
 
         field.addInput('number', (e) => {
-          this.#controller = e;
-          e.classList.add('width-number');
-          e.min = 0;
-          e.max = 127;
-          e.value = drum.controller;
+          this.#sensitivity = e;
+          e.classList.add('width-label'); // -0.99 does not fit
+          e.min = -0.99;
+          e.max = 0.99;
+          e.step = 0.01;
+          e.value = drum.sensitivity;
           e.addEventListener('input', () => {
-            updateController(e.value);
             range.value = e.value;
           });
-
-          updateController(e.value);
         });
       });
 
@@ -550,12 +547,12 @@ class V2SettingsDrum extends V2SettingsModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.min = 0;
-        e.max = 127;
-        e.value = this.#controller.value;
+        e.min = -0.99;
+        e.max = 0.99;
+        e.step = 0.01;
+        e.value = this.#sensitivity.value;
         e.addEventListener('input', () => {
-          this.#controller.value = Number(e.value);
-          updateController(e.value);
+          this.#sensitivity.value = Number(e.value);
         });
       });
     }
@@ -565,15 +562,19 @@ class V2SettingsDrum extends V2SettingsModule {
       let range = null;
 
       const updateNote = (number) => {
-        note.textContent = V2MIDI.Note.name(number) + (V2MIDI.GM.Percussion.Name[number] ? ' – ' + V2MIDI.GM.Percussion.Name[number] : '');
-        if (V2MIDI.Note.isBlack(number)) {
-          note.classList.add('is-dark');
-          note.classList.remove('has-background-light');
+        if (number > 0) {
+          note.textContent = V2MIDI.Note.name(number) + (V2MIDI.GM.Percussion.Name[number] ? ' – ' + V2MIDI.GM.Percussion.Name[number] : '');
+          if (V2MIDI.Note.isBlack(number)) {
+            note.classList.add('is-dark');
+            note.classList.remove('has-background-light');
 
-        } else {
-          note.classList.remove('is-dark');
-          note.classList.add('has-background-light');
-        }
+          } else {
+            note.classList.remove('is-dark');
+            note.classList.add('has-background-light');
+          }
+
+        } else
+          note.textContent = 'Disabled';
       }
 
       new V2WebField(canvas, (field) => {
@@ -647,30 +648,47 @@ class V2SettingsDrum extends V2SettingsModule {
       });
     }
 
-    if (drum.sensitivity != null) {
-      let sensitivity = null;
+    if (drum.controller != null) {
+      let text = null;
       let range = null;
+
+      const updateController = (number) => {
+        if (number > 0)
+          text.textContent = V2MIDI.CC.Name[number] || 'Controller ' + number;
+
+        else
+          text.textContent = 'Disabled';
+      };
 
       new V2WebField(canvas, (field) => {
         field.addButton((e) => {
-          sensitivity = e;
           e.classList.add('width-label');
-          e.classList.add('inactive');
           e.classList.add('has-background-grey-lighter');
+          e.classList.add('inactive');
           e.tabIndex = -1;
-          e.textContent = 'Sensitivity';
+          e.textContent = 'Pressure';
+        });
+
+        field.addButton((e) => {
+          text = e;
+          e.classList.add('width-text-wide');
+          e.classList.add('has-background-light');
+          e.classList.add('inactive');
+          e.tabIndex = -1;
         });
 
         field.addInput('number', (e) => {
-          this.#sensitivity = e;
-          e.classList.add('width-label'); // -0.99 does not fit
-          e.min = -0.99;
-          e.max = 0.99;
-          e.step = 0.01;
-          e.value = drum.sensitivity;
+          this.#controller = e;
+          e.classList.add('width-number');
+          e.min = 0;
+          e.max = 127;
+          e.value = drum.controller;
           e.addEventListener('input', () => {
+            updateController(e.value);
             range.value = e.value;
           });
+
+          updateController(e.value);
         });
       });
 
@@ -678,12 +696,12 @@ class V2SettingsDrum extends V2SettingsModule {
         range = e;
         e.classList.add('range');
         e.type = 'range';
-        e.min = -0.99;
-        e.max = 0.99;
-        e.step = 0.01;
-        e.value = this.#sensitivity.value;
+        e.min = 0;
+        e.max = 127;
+        e.value = this.#controller.value;
         e.addEventListener('input', () => {
-          this.#sensitivity.value = Number(e.value);
+          this.#controller.value = Number(e.value);
+          updateController(e.value);
         });
       });
     }
@@ -717,8 +735,7 @@ class V2SettingsNote extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    if (setting.title)
-      super.addTitle(canvas, setting.title);
+    super.addSection(canvas, setting);
 
     let note = null;
     let range = null;
@@ -738,6 +755,13 @@ class V2SettingsNote extends V2SettingsModule {
 
       this.#note.value = Number(number);
       range.value = number;
+
+      if (setting.default != null) {
+        if (number == setting.default)
+          this.#note.classList.add('has-text-grey-lighter');
+        else
+          this.#note.classList.remove('has-text-grey-lighter');
+      }
     }
 
     new V2WebField(canvas, (field) => {
@@ -811,8 +835,7 @@ class V2SettingsToggle extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    if (setting.title)
-      super.addTitle(canvas, setting.title);
+    super.addSection(canvas, setting);
 
     new V2WebField(canvas, (field) => {
       field.addButton((e) => {
@@ -823,13 +846,14 @@ class V2SettingsToggle extends V2SettingsModule {
         e.tabIndex = -1;
       });
 
-      field.addButton((e) => {
-        e.classList.add('width-text');
-        e.classList.add('has-background-light');
-        e.classList.add('inactive');
-        e.textContent = setting.text;
-        e.tabIndex = -1;
-      });
+      if (setting.text)
+        field.addButton((e) => {
+          e.classList.add('width-text');
+          e.classList.add('has-background-light');
+          e.classList.add('inactive');
+          e.textContent = setting.text;
+          e.tabIndex = -1;
+        });
 
       field.addElement('label', (label) => {
         label.classList.add('switch');
@@ -862,10 +886,9 @@ class V2SettingsNumber extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    if (setting.title)
-      super.addTitle(canvas, setting.title);
+    super.addSection(canvas, setting);
 
-    this.#number = Number(this.getConfiguration(data.configuration));
+    this.#number = null;
     let number = null;
     let range = null;
     const min = (setting.min != null) ? setting.min : 0;
@@ -874,12 +897,19 @@ class V2SettingsNumber extends V2SettingsModule {
     const select = setting.input == 'select';
 
     const update = (value) => {
-      if (value == null || value < min || value > max)
+      if (value == this.#number || value == null || value < min || value > max)
         return;
 
       this.#number = Number(value);
       number.value = value;
       range.value = value;
+
+      if (setting.default != null) {
+        if (value == setting.default)
+          number.classList.add('has-text-grey-lighter');
+        else
+          number.classList.remove('has-text-grey-lighter');
+      }
     }
 
     new V2WebField(canvas, (field) => {
@@ -890,6 +920,15 @@ class V2SettingsNumber extends V2SettingsModule {
         e.textContent = setting.label;
         e.tabIndex = -1;
       });
+
+      if (setting.text) {
+        field.addButton((e) => {
+          e.classList.add('width-label');
+          e.classList.add('inactive');
+          e.textContent = setting.text;
+          e.tabIndex = -1;
+        });
+      }
 
       if (!select) {
         field.addInput('number', (e) => {
@@ -923,6 +962,8 @@ class V2SettingsNumber extends V2SettingsModule {
         }
 
       } else {
+        this.#number = this.getConfiguration(data.configuration);
+
         field.addElement('span', (e) => {
           e.classList.add('select');
 
@@ -957,6 +998,8 @@ class V2SettingsNumber extends V2SettingsModule {
           update(e.value);
         });
       });
+
+      update(this.getConfiguration(data.configuration));
     }
 
     return Object.seal(this);
@@ -964,6 +1007,197 @@ class V2SettingsNumber extends V2SettingsModule {
 
   save(configuration) {
     this.setConfiguration(configuration, this.#number);
+  }
+}
+
+// Pulse values.
+class V2SettingsPulse extends V2SettingsModule {
+  static type = 'pulse';
+
+  #seconds = Object.seal({
+    number: null,
+    updateNumber: null,
+    setNumber: null,
+    setRange: null
+  });
+
+  #watts = Object.seal({
+    number: null,
+    updateNumber: null,
+    setNumber: null,
+    setRange: null
+  });
+
+  constructor(device, settings, canvas, setting, data) {
+    super(device, settings, setting);
+    super.addSection(canvas, setting);
+
+    V2Web.addButtons(canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
+        e.textContent = 'Reset';
+        e.addEventListener('click', () => {
+          if (setting.default?.watts) {
+            this.#watts.setNumber(setting.default.watts);
+            this.#watts.setRange(setting.default.watts);
+          }
+
+          if (setting.default?.seconds) {
+            this.#seconds.setNumber(setting.default.seconds);
+            this.#seconds.setRange(setting.default.seconds);
+          }
+        });
+      });
+
+      V2Web.addButton(buttons, (e) => {
+        e.textContent = 'Test';
+        e.disabled = setting.index == null;
+        e.addEventListener('click', () => {
+          device.sendSystemExclusive({
+            pulse: {
+              index: setting.index,
+              watts: this.#watts.number.value,
+              seconds: this.#seconds.number.value
+            }
+          });
+        });
+      });
+    });
+
+    const pulse = this.getConfiguration(data.configuration);
+    new V2WebField(canvas, (field) => {
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('has-background-grey-lighter');
+        e.classList.add('inactive');
+        e.textContent = setting.label;
+        e.tabIndex = -1;
+      });
+
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('inactive');
+        e.textContent = 'Watts';
+        e.tabIndex = -1;
+      });
+
+      field.addInput('number', (e) => {
+        this.#watts.number = e;
+        e.classList.add('width-number-wide');
+        e.min = 0;
+        e.max = 100;
+        e.addEventListener('input', () => {
+          this.#watts.updateNumber();
+          this.#watts.setRange(e.value);
+        });
+
+        this.#watts.updateNumber = () => {
+          e.step = (e.value < 10) ? 0.1 : 1;
+
+          if (setting.default?.watts != null) {
+            if (e.value == setting.default.watts)
+              e.classList.add('has-text-grey-lighter');
+
+            else
+              e.classList.remove('has-text-grey-lighter');
+          }
+        };
+
+        this.#watts.setNumber = (watts) => {
+          const digits = (watts < 10) ? 1 : 0;
+          e.value = Number.parseFloat(watts).toFixed(digits);
+          this.#watts.updateNumber();
+        };
+      });
+    });
+
+    V2Web.addElement(canvas, 'input', (e) => {
+      e.classList.add('range');
+      e.type = 'range';
+      e.min = 0.11;
+      e.max = 1;
+      e.step = 0.002;
+      e.addEventListener('input', () => {
+        this.#watts.setNumber(100 * Math.pow(e.value, 3));
+      });
+
+      this.#watts.setRange = (watts) => {
+        e.value = Math.pow(watts / 100, 1 / 3);
+      };
+    });
+
+    new V2WebField(canvas, (field) => {
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('has-background-grey-lighter');
+        e.classList.add('inactive');
+        e.textContent = setting.label;
+        e.tabIndex = -1;
+      });
+
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('inactive');
+        e.textContent = 'Seconds';
+        e.tabIndex = -1;
+      });
+
+      field.addInput('number', (e) => {
+        this.#seconds.number = e;
+        e.classList.add('width-number-wide');
+        e.min = 0;
+        e.max = 100;
+        e.addEventListener('input', () => {
+          this.#seconds.updateNumber();
+          this.#seconds.setRange(e.value);
+        });
+
+        this.#seconds.updateNumber = () => {
+          e.step = (e.value < 0.1) ? 0.001 : (e.value < 1) ? 0.01 : (e.value < 10) ? 0.1 : 1;
+
+          if (setting.default?.seconds != null) {
+            if (e.value == setting.default.seconds)
+              e.classList.add('has-text-grey-lighter');
+
+            else
+              e.classList.remove('has-text-grey-lighter');
+          }
+        };
+
+        this.#seconds.setNumber = (seconds) => {
+          const digits = (seconds < 0.1) ? 3 : (seconds < 1) ? 2 : (seconds < 10) ? 1 : 0;
+          e.value = Number.parseFloat(seconds).toFixed(digits);
+          this.#seconds.updateNumber();
+        };
+      });
+    });
+
+    V2Web.addElement(canvas, 'input', (e) => {
+      e.classList.add('range');
+      e.type = 'range';
+      e.min = 0.22;
+      e.max = 1;
+      e.step = 0.002;
+      e.addEventListener('input', () => {
+        this.#seconds.setNumber(100 * Math.pow(e.value, 8));
+      });
+
+      this.#seconds.setRange = (seconds) => {
+        e.value = Math.pow(seconds / 100, 1 / 8);
+      };
+    });
+
+    this.#watts.setNumber(pulse.watts);
+    this.#watts.setRange(pulse.watts);
+    this.#seconds.setNumber(pulse.seconds);
+    this.#seconds.setRange(pulse.seconds);
+    return Object.seal(this);
+  }
+
+  save(configuration) {
+    this.setConfiguration(configuration, {
+      watts: this.#watts.number.value,
+      seconds: this.#seconds.number.value
+    });
   }
 }
 
@@ -975,8 +1209,7 @@ class V2SettingsText extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    if (setting.title)
-      super.addTitle(canvas, setting.title);
+    super.addSection(canvas, setting);
 
     new V2WebField(canvas, (field) => {
       field.addButton((e) => {
@@ -1009,7 +1242,7 @@ class V2SettingsTitle extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    super.addTitle(canvas, setting.title);
+    super.addSection(canvas, setting);
   }
 }
 
@@ -1025,7 +1258,7 @@ class V2SettingsUSB extends V2SettingsModule {
 
   constructor(device, settings, canvas, setting, data) {
     super(device, settings, setting);
-    super.addTitle(canvas, 'USB');
+    super.addHeading(canvas, 'USB');
 
     new V2WebField(canvas, (field) => {
       field.addButton((e) => {
@@ -1047,6 +1280,9 @@ class V2SettingsUSB extends V2SettingsModule {
     });
 
     const usbID = (number) => {
+      if (number == null)
+        return '';
+
       return ('0000' + number.toString(16)).substr(-4)
     };
 
@@ -1066,7 +1302,8 @@ class V2SettingsUSB extends V2SettingsModule {
           e.maxLength = 4;
           if (data.configuration.usb.vid > 0)
             e.value = usbID(data.configuration.usb.vid);
-          e.placeholder = usbID(data.system.usb.vid);
+
+          e.placeholder = usbID(data.system.hardware?.usb?.vid);
         });
       });
     }
@@ -1087,13 +1324,14 @@ class V2SettingsUSB extends V2SettingsModule {
           e.maxLength = 4;
           if (data.configuration.usb.pid > 0)
             e.value = usbID(data.configuration.usb.pid);
-          e.placeholder = usbID(data.system.usb.pid);
+
+          e.placeholder = usbID(data.system.hardware?.usb?.pid);
         });
       });
     }
 
     // The number of MIDI ports.
-    if (data.system.ports && data.system.ports.announce > 0) {
+    if (data.system.hardware?.usb?.ports?.standard > 0) {
       new V2WebField(canvas, (field) => {
         field.addButton((e) => {
           e.classList.add('width-label');
@@ -1109,11 +1347,11 @@ class V2SettingsUSB extends V2SettingsModule {
           V2Web.addElement(e, 'select', (select) => {
             this.#ports = select;
 
-            for (let i = 1; i < 17; i++) {
+            for (let i = 0; i < 17; i++) {
               V2Web.addElement(select, 'option', (e) => {
                 e.value = i;
-                e.text = i;
-                if (i == data.system.ports.configured)
+                e.text = i > 0 ? i : '–';
+                if (i == data.configuration.usb.ports)
                   e.selected = true;
               });
             }

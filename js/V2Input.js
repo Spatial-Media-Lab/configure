@@ -4,7 +4,10 @@
 // MIDI Input controllers and notes.
 class V2Input extends V2WebModule {
   #device = null;
-  #channel = 0;
+  #channel = Object.seal({
+    value: null,
+    addEntry: null
+  });
   #controls = Object.seal({
     element: null,
     program: null,
@@ -41,7 +44,7 @@ class V2Input extends V2WebModule {
     });
 
     this.#device.addNotifier('reset', () => {
-      this.#channel = 0;
+      this.#channel.value = null;
       this.detach();
       this.#clear();
     });
@@ -76,18 +79,17 @@ class V2Input extends V2WebModule {
           field.addInput('number', (e) => {
             input = e;
             e.classList.add('width-number');
-            e.min = 0;
             e.max = 127;
             e.value = value || 0;
             e.addEventListener('input', () => {
               if (!inputFine) {
                 range.value = input.value;
-                this.#device.sendControlChange(this.#channel, controller, e.value);
+                this.#device.sendControlChange(this.#channel.value, controller, e.value);
 
               } else {
                 range.value = (e.value << 7) | inputFine.value;
-                this.#device.sendControlChange(this.#channel, controller, e.value);
-                this.#device.sendControlChange(this.#channel, V2MIDI.CC.controllerLSB + controller, inputFine.value);
+                this.#device.sendControlChange(this.#channel.value, controller, e.value);
+                this.#device.sendControlChange(this.#channel.value, V2MIDI.CC.controllerLSB + controller, inputFine.value);
               }
             });
           });
@@ -98,13 +100,12 @@ class V2Input extends V2WebModule {
             field.addInput('number', (e) => {
               inputFine = e;
               e.classList.add('width-number');
-              e.min = 0;
               e.max = 127;
               e.value = value;
               e.addEventListener('input', () => {
                 range.value = (input.value << 7) | e.value;
-                this.#device.sendControlChange(this.#channel, controller, input.value);
-                this.#device.sendControlChange(this.#channel, V2MIDI.CC.controllerLSB + controller, e.value);
+                this.#device.sendControlChange(this.#channel.value, controller, input.value);
+                this.#device.sendControlChange(this.#channel.value, V2MIDI.CC.controllerLSB + controller, e.value);
               });
             });
           }
@@ -120,7 +121,7 @@ class V2Input extends V2WebModule {
               e.type = 'checkbox';
               e.checked = value > 63;
               e.addEventListener('input', () => {
-                this.#device.sendControlChange(this.#channel, controller, e.checked ? 127 : 0);
+                this.#device.sendControlChange(this.#channel.value, controller, e.checked ? 127 : 0);
               });
             });
 
@@ -135,11 +136,14 @@ class V2Input extends V2WebModule {
             e.classList.add('width-label');
             e.classList.add('is-link');
 
+            if (value > 63)
+              e.classList.add('is-active');
+
             e.addEventListener('mousedown', () => {
-              this.#device.sendControlChange(this.#channel, controller, 127);
+              this.#device.sendControlChange(this.#channel.value, controller, 127);
             });
             e.addEventListener('mouseup', () => {
-              this.#device.sendControlChange(this.#channel, controller, 0);
+              this.#device.sendControlChange(this.#channel.value, controller, 0);
             });
             e.addEventListener('touchstart', (event) => {
               e.classList.add('is-active');
@@ -174,15 +178,15 @@ class V2Input extends V2WebModule {
         e.addEventListener('input', () => {
           if (!inputFine) {
             input.value = e.value;
-            this.#device.sendControlChange(this.#channel, controller, e.value);
+            this.#device.sendControlChange(this.#channel.value, controller, e.value);
 
           } else {
             const msb = (e.value >> 7) & 0x7f;
             const lsb = e.value & 0x7f;
             input.value = msb;
             inputFine.value = lsb;
-            this.#device.sendControlChange(this.#channel, controller, msb);
-            this.#device.sendControlChange(this.#channel, V2MIDI.CC.controllerLSB + controller, lsb);
+            this.#device.sendControlChange(this.#channel.value, controller, msb);
+            this.#device.sendControlChange(this.#channel.value, V2MIDI.CC.controllerLSB + controller, lsb);
           }
         });
       });
@@ -204,10 +208,10 @@ class V2Input extends V2WebModule {
               e.classList.add('is-dark');
 
             e.addEventListener('mousedown', () => {
-              this.#device.sendNote(this.#channel, note, this.#notes.controls.velocity);
+              this.#device.sendNote(this.#channel.value, note, this.#notes.controls.velocity);
             });
             e.addEventListener('mouseup', () => {
-              this.#device.sendNoteOff(this.#channel, note);
+              this.#device.sendNoteOff(this.#channel.value, note);
             });
             e.addEventListener('touchstart', (event) => {
               e.classList.add('is-active');
@@ -245,7 +249,7 @@ class V2Input extends V2WebModule {
       V2Web.addButton(buttons, (e) => {
         e.classList.add('width-label');
         e.classList.add('inactive');
-        e.textContent = V2MIDI.Note.name(note);
+        e.textContent = V2MIDI.Note.name(note) + ' (' + note + ')';
         if (V2MIDI.Note.isBlack(note))
           e.classList.add('is-dark');
         else
@@ -265,10 +269,10 @@ class V2Input extends V2WebModule {
         e.classList.add('width-label');
         e.classList.add('is-link');
         e.addEventListener('mousedown', () => {
-          this.#device.sendNote(this.#channel, note, this.#notes.controls.velocity);
+          this.#device.sendNote(this.#channel.value, note, this.#notes.controls.velocity);
         });
         e.addEventListener('mouseup', () => {
-          this.#device.sendNoteOff(this.#channel, note);
+          this.#device.sendNoteOff(this.#channel.value, note);
         });
         e.addEventListener('touchstart', (event) => {
           e.classList.add('is-active');
@@ -325,9 +329,9 @@ class V2Input extends V2WebModule {
 
               const msb = (channel.programs[select.selectedIndex].bank >> 7) & 0x7f;
               const lsb = channel.programs[select.selectedIndex].bank & 0x7f;
-              this.#device.sendControlChange(this.#channel, V2MIDI.CC.bankSelect, msb);
-              this.#device.sendControlChange(this.#channel, V2MIDI.CC.bankSelectLSB, lsb);
-              this.#device.sendProgramChange(this.#channel, channel.programs[select.selectedIndex].number);
+              this.#device.sendControlChange(this.#channel.value, V2MIDI.CC.bankSelect, msb);
+              this.#device.sendControlChange(this.#channel.value, V2MIDI.CC.bankSelectLSB, lsb);
+              this.#device.sendProgramChange(this.#channel.value, channel.programs[select.selectedIndex].number);
               this.#device.sendGetAll();
             });
           });
@@ -401,11 +405,10 @@ class V2Input extends V2WebModule {
             input = e;
             e.classList.add('input');
             e.classList.add('width-number');
-            e.min = 0;
             e.max = 127;
             e.value = channel.aftertouch.value;
             e.addEventListener('input', () => {
-              this.#device.sendAftertouchChannel(this.#channel, Number(e.value));
+              this.#device.sendAftertouchChannel(this.#channel.value, Number(e.value));
               range.value = e.value;
             });
           });
@@ -414,18 +417,17 @@ class V2Input extends V2WebModule {
         V2Web.addElement(this.#notes.controls.element, 'input', (e) => {
           e.classList.add('range');
           e.type = 'range';
-          e.min = 0;
           e.max = 127;
           e.value = channel.aftertouch.value;
           e.addEventListener('input', () => {
-            this.#device.sendAftertouchChannel(this.#channel, Number(e.value));
+            this.#device.sendAftertouchChannel(this.#channel.value, Number(e.value));
             input.value = e.value;
           });
 
           e.addEventListener('mouseup', () => {
             e.value = 0;
             e.value = 0;
-            this.#device.sendAftertouchChannel(this.#channel, 0);
+            this.#device.sendAftertouchChannel(this.#channel.value, 0);
           });
 
           e.addEventListener('touchend', (event) => {
@@ -457,7 +459,7 @@ class V2Input extends V2WebModule {
             e.max = 8191;
             e.value = channel.pitchbend.value;
             e.addEventListener('input', () => {
-              this.#device.sendPitchBend(this.#channel, Number(e.value));
+              this.#device.sendPitchBend(this.#channel.value, Number(e.value));
               range.value = e.value;
             });
           });
@@ -470,7 +472,7 @@ class V2Input extends V2WebModule {
           e.max = 8191;
           e.value = channel.pitchbend.value;
           e.addEventListener('input', () => {
-            this.#device.sendPitchBend(this.#channel, Number(e.value));
+            this.#device.sendPitchBend(this.#channel.value, Number(e.value));
             input.value = e.value;
           });
 
@@ -480,7 +482,7 @@ class V2Input extends V2WebModule {
               return;
             e.value = 0;
             input.value = 0;
-            this.#device.sendPitchBend(this.#channel, 0);
+            this.#device.sendPitchBend(this.#channel.value, 0);
           });
 
           e.addEventListener('touchend', (event) => {
@@ -518,14 +520,14 @@ class V2Input extends V2WebModule {
       V2Web.addButton(buttons, (e) => {
         e.textContent = 'Notes Off';
         e.addEventListener('click', () => {
-          this.#device.sendControlChange(this.#channel, V2MIDI.CC.allNotesOff, 0);
+          this.#device.sendControlChange(this.#channel.value, V2MIDI.CC.allNotesOff, 0);
         });
       });
 
       V2Web.addButton(buttons, (e) => {
         e.textContent = 'Reset';
         e.addEventListener('click', () => {
-          this.#channel = 0;
+          this.#channel.value = null;
           this.#device.sendReset();
         });
       });
@@ -539,6 +541,45 @@ class V2Input extends V2WebModule {
       });
     });
 
+    new V2WebField(this.canvas, (field) => {
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('has-background-grey-lighter');
+        e.classList.add('inactive');
+        e.textContent = 'Channel';
+        e.tabIndex = -1;
+      });
+
+      field.addElement('span', (e) => {
+        e.classList.add('select');
+
+        V2Web.addElement(e, 'select', (select) => {
+          this.#channel.addEntry = (channel, name, selected) => {
+            V2Web.addElement(select, 'option', (e) => {
+              e.text = channel + 1;
+              if (name)
+                e.text += ' - ' + name;
+
+              if (selected)
+                e.selected = true;
+            });
+
+            select.disabled = select.options.length == 1;
+
+            select.addEventListener('change', () => {
+              this.#channel.value = data.input.channels[select.selectedIndex].number;
+
+              // Request a refresh with the values of the selected channel.
+              this.#device.sendRequest({
+                'method': 'switchChannel',
+                'channel': this.#channel.value
+              });
+            });
+          };
+        });
+      });
+    });
+
     V2Web.addElement(this.canvas, 'div', (e) => {
       this.#controls.element = e;
     });
@@ -546,6 +587,10 @@ class V2Input extends V2WebModule {
     V2Web.addElement(this.canvas, 'div', (e) => {
       this.#controllers.element = e;
       e.style.display = 'none';
+
+      V2Web.addElement(e, 'hr', (e) => {
+        e.classList.add('subsection');
+      });
 
       V2Web.addElement(e, 'h3', (e) => {
         e.classList.add('title');
@@ -561,6 +606,10 @@ class V2Input extends V2WebModule {
     V2Web.addElement(this.canvas, 'div', (e) => {
       this.#notes.element = e;
       e.style.display = 'none';
+
+      V2Web.addElement(e, 'hr', (e) => {
+        e.classList.add('subsection');
+      });
 
       V2Web.addElement(e, 'h3', (e) => {
         e.classList.add('title');
@@ -581,61 +630,42 @@ class V2Input extends V2WebModule {
       });
     });
 
-    // The controls for all channels.
-    this.#addChannel(data.input);
-
-    // A separate set of controls per channel.
     if (data.input.channels) {
-      new V2WebField(this.#controls.element, (field) => {
-        field.addButton((e) => {
-          e.classList.add('width-label');
-          e.classList.add('has-background-grey-lighter');
-          e.classList.add('inactive');
-          e.textContent = 'Channel';
-          e.tabIndex = -1;
-        });
+      // Find the currently selected channel number.
+      data.input.channels.find((channel) => {
+        if (!channel.selected)
+          return false;
 
-        field.addElement('span', (e) => {
-          e.classList.add('select');
-
-          V2Web.addElement(e, 'select', (select) => {
-
-            // Look for the currently selected channel number.
-            data.input.channels.find((channel) => {
-              if (!channel.selected)
-                return false;
-
-              this.#channel = channel.number;
-              return true;
-            });
-
-            for (const channel of data.input.channels)
-              V2Web.addElement(select, 'option', (e) => {
-                e.text = (channel.number + 1);
-                if (channel.name)
-                  e.text += ' - ' + channel.name;
-                e.selected = (channel.number == this.#channel);
-              });
-
-            select.addEventListener('change', () => {
-              this.#channel = data.input.channels[select.selectedIndex].number;
-              // Request a refresh with the values of the selected channel.
-              this.#device.sendRequest({
-                'method': 'switchChannel',
-                'channel': data.input.channels[select.selectedIndex].number
-              });
-            });
-          });
-        });
+        this.#channel.value = channel.number;
+        return true;
       });
 
+      // Use the first entry.
+      if (this.#channel.value == null)
+        this.#channel.value = data.input.channels[0].number;
+
+      // Update the channel selector.
+      for (const channel of data.input.channels)
+        this.#channel.addEntry(channel.number, channel.name, this.#channel.value == channel.number);
+
+      // Add the currently selected channel.
       data.input.channels.find((channel) => {
-        if (channel.number != this.#channel)
+        if (channel.number != this.#channel.value)
           return false;
 
         this.#addChannel(channel);
         return true;
       });
+
+    } else {
+      if (data.input.channel != null)
+        this.#channel.value = data.input.channel;
+
+      else
+        this.#channel.value = 0;
+
+      this.#channel.addEntry(this.#channel.value);
+      this.#addChannel(data.input);
     }
   }
 

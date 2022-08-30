@@ -5,9 +5,6 @@
 class V2Log extends V2WebModule {
   #device = null;
   #element = null;
-  #lines = [];
-  #refresh = false;
-  #timeout = null;
 
   // Early initialization to store messages before the section is added.
   constructor() {
@@ -40,43 +37,22 @@ class V2Log extends V2WebModule {
   }
 
   print(line) {
-    this.#lines.push(line);
-    if (this.#lines.length > 25)
-      this.#lines.shift();
+    V2Web.addElement(this.#element, 'div', (e) => {
+      e.innerHTML = line;
+    });
 
-    this.#refresh = true;
+    while (this.#element.childElementCount > 100)
+      this.#element.firstChild.remove();
 
-    if (this.#timeout)
-      return;
-
-    this.#update();
-
-    // Set timout to rate-limit the updating.
-    this.#timeout = setTimeout(() => {
-      this.#timeout = null;
-      this.#update();
-    }, 250);
+    this.#element.scrollTop = this.#element.scrollHeight;
   }
 
   setup(device) {
     this.#device = device;
   }
 
-  #update() {
-    if (!this.#refresh)
-      return;
-
-    this.#refresh = false;
-
-    this.#element.innerHTML = '';
-    for (const line of this.#lines)
-      this.#element.innerHTML += line + '<br>\n';
-
-    this.#element.scrollTop = this.#element.scrollHeight;
-  }
-
   #clear() {
-    this.#lines = [];
-    this.#element.innerHTML = '';
+    while (this.#element.firstChild)
+      this.#element.firstChild.remove();
   }
 }

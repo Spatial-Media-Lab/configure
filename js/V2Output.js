@@ -5,14 +5,16 @@
 class V2Output extends V2WebModule {
   #device = null;
   #channel = Object.seal({
-    element: null,
-    elementValue: null,
-    value: null
+    value: null,
+    addEntry: null
   });
   #controllers = Object.seal({
     element: null,
     elementList: null,
     list: null
+  });
+  #aftertouch = Object.seal({
+    update: null
   });
   #notes = Object.seal({
     element: null,
@@ -33,15 +35,16 @@ class V2Output extends V2WebModule {
     });
 
     this.#device.addNotifier('reset', () => {
+      this.#channel.value = null;
       this.detach();
       this.#clear();
     });
 
     const updateNote = (channel, note, velocity) => {
-      if (this.#channel.value != null && this.#channel.value != channel)
+      if (this.#channel.value != channel)
         return;
 
-      if (!this.#notes.list || !this.#notes.list[note])
+      if (!this.#notes.list[note])
         return;
 
       if (velocity > 0) {
@@ -51,8 +54,12 @@ class V2Output extends V2WebModule {
       } else {
         this.#notes.list[note].input.value = null;
         this.#notes.list[note].progress.value = 0;
+
         if (this.#notes.list[note].aftertouch)
           this.#notes.list[note].aftertouch.value = 0;
+
+        if (this.#aftertouch.update)
+          this.#aftertouch.update(0);
       }
     }
 
@@ -65,20 +72,28 @@ class V2Output extends V2WebModule {
     });
 
     this.#device.getDevice().addNotifier('aftertouch', (channel, note, pressure) => {
-      if (this.#channel.value != null && this.#channel.value != channel)
+      if (this.#channel.value != channel)
         return;
 
-      if (!this.#notes.list || !this.#notes.list[note] || !this.#notes.list[note].aftertouch)
+      if (!this.#notes.list[note] || !this.#notes.list[note].aftertouch)
         return;
 
       this.#notes.list[note].aftertouch.value = pressure;
     });
 
-    this.#device.getDevice().addNotifier('controlChange', (channel, controller, value) => {
-      if (this.#channel.value != null && this.#channel.value != channel)
+    this.#device.getDevice().addNotifier('aftertouchChannel', (channel, pressure) => {
+      if (this.#channel.value != channel)
         return;
 
-      if (!this.#controllers.list || !this.#controllers.list[controller])
+      if (this.#aftertouch.update)
+        this.#aftertouch.update(pressure);
+    });
+
+    this.#device.getDevice().addNotifier('controlChange', (channel, controller, value) => {
+      if (this.#channel.value != channel)
+        return;
+
+      if (!this.#controllers.list[controller])
         return;
 
       if (this.#controllers.list[controller].input) {
@@ -148,7 +163,6 @@ class V2Output extends V2WebModule {
           }
 
           // The range progress bar is added after the field.
-
           break;
 
         case 'toggle':
@@ -202,7 +216,7 @@ class V2Output extends V2WebModule {
       field.addButton((e) => {
         e.classList.add('width-label');
         e.classList.add('inactive');
-        e.textContent = V2MIDI.Note.name(note);
+        e.textContent = V2MIDI.Note.name(note) + ' (' + note + ')';
         if (V2MIDI.Note.isBlack(note))
           e.classList.add('is-dark');
         else
@@ -223,7 +237,7 @@ class V2Output extends V2WebModule {
         e.classList.add('width-number');
         e.classList.add('inactive');
         e.readOnly = true;
-        e.tabIndex = -1;
+        e.tabIndex = -1
         this.#notes.list[note] = {
           'input': e,
         }
@@ -249,29 +263,111 @@ class V2Output extends V2WebModule {
     }
   }
 
+  #addChannel(channel) {
+    if (channel.controllers) {
+      for (const controller of channel.controllers)
+        this.#addController(controller.name, controller.number, controller.type || 'range', controller.value, controller.valueFine);
+
+      this.#controllers.element.style.display = '';
+    }
+
+    if (channel.notes) {
+      // Aftertouch Channel.
+      if (channel.aftertouch) {
+        let input = null;
+        let progress = null;
+
+        new V2WebField(this.#notes.elementList, (field) => {
+          field.addButton((e) => {
+            e.classList.add('width-label');
+            e.classList.add('has-background-grey-lighter');
+            e.classList.add('inactive');
+            e.textContent = 'Aftertouch';
+            e.tabIndex = -1;
+          });
+
+          field.addInput('number', (e) => {
+            input = e;
+            e.classList.add('input');
+            e.classList.add('width-number');
+            e.classList.add('inactive');
+            e.max = 127;
+            e.value = channel.aftertouch.value;
+          });
+        });
+
+        V2Web.addElement(this.#notes.elementList, 'progress', (e) => {
+          progress = e;
+          e.classList.add('progress');
+          e.classList.add('is-small');
+          e.value = channel.aftertouch.value;
+          e.max = '127';
+        });
+
+        this.#aftertouch.update = (pressure) => {
+          input.value = pressure;
+          progress.value = pressure;
+        };
+      }
+
+      for (const note of channel.notes)
+        this.#addNote(note.name, note.number, note.aftertouch);
+
+      this.#notes.element.style.display = '';
+    }
+  }
+
   #show(data) {
     this.#clear();
 
     if (!data.output)
       return;
 
-    V2Web.addElement(this.canvas, 'div', (e) => {
-      this.#channel.element = e;
-      e.style.display = 'none';
-
-      V2Web.addButtons(e, (buttons) => {
-        V2Web.addButton(buttons, (e) => {
-          e.classList.add('width-label');
-          e.classList.add('has-background-grey-lighter');
-          e.classList.add('inactive');
-          e.textContent = 'Channel';
-          e.tabIndex = -1;
+    V2Web.addButtons(this.canvas, (buttons) => {
+      V2Web.addButton(buttons, (e) => {
+        e.classList.add('is-link');
+        e.textContent = 'Refresh';
+        e.addEventListener('click', () => {
+          this.#device.sendGetAll();
         });
+      });
+    });
 
-        V2Web.addButton(buttons, (e) => {
-          this.#channel.elementValue = e;
-          e.classList.add('inactive');
-          e.tabIndex = -1;
+    new V2WebField(this.canvas, (field) => {
+      field.addButton((e) => {
+        e.classList.add('width-label');
+        e.classList.add('has-background-grey-lighter');
+        e.classList.add('inactive');
+        e.textContent = 'Channel';
+        e.tabIndex = -1;
+      });
+
+      field.addElement('span', (e) => {
+        e.classList.add('select');
+
+        V2Web.addElement(e, 'select', (select) => {
+          this.#channel.addEntry = (channel, name, selected) => {
+            V2Web.addElement(select, 'option', (e) => {
+              e.text = channel + 1;
+              if (name)
+                e.text += ' - ' + name;
+
+              if (selected)
+                e.selected = true;
+            });
+
+            select.disabled = select.options.length == 1;
+
+            select.addEventListener('change', () => {
+              this.#channel.value = data.output.channels[select.selectedIndex].number;
+
+              // Request a refresh with the values of the selected channel.
+              this.#device.sendRequest({
+                'method': 'switchChannel',
+                'channel': this.#channel.value
+              });
+            });
+          };
         });
       });
     });
@@ -279,6 +375,10 @@ class V2Output extends V2WebModule {
     V2Web.addElement(this.canvas, 'div', (e) => {
       this.#controllers.element = e;
       e.style.display = 'none';
+
+      V2Web.addElement(e, 'hr', (e) => {
+        e.classList.add('subsection');
+      });
 
       V2Web.addElement(e, 'h3', (e) => {
         e.classList.add('title');
@@ -295,6 +395,10 @@ class V2Output extends V2WebModule {
       this.#notes.element = e;
       e.style.display = 'none';
 
+      V2Web.addElement(e, 'hr', (e) => {
+        e.classList.add('subsection');
+      });
+
       V2Web.addElement(e, 'h3', (e) => {
         e.classList.add('title');
         e.classList.add('subsection');
@@ -306,26 +410,45 @@ class V2Output extends V2WebModule {
       });
     });
 
-    if (data.output.channel != null) {
-      this.#channel.elementValue.textContent = data.output.channel + 1;
-      this.#channel.element.style.display = '';
-      this.#channel.value = data.output.channel;
-    }
+    this.#controllers.list = {};
+    this.#notes.list = {};
 
-    if (data.output.controllers) {
-      this.#controllers.list = {};
-      for (const controller of data.output.controllers)
-        this.#addController(controller.name, controller.number, controller.type || 'range', controller.value, controller.valueFine);
+    if (data.output.channels) {
+      // Find the currently selected channel number.
+      data.output.channels.find((channel) => {
+        if (!channel.selected)
+          return false;
 
-      this.#controllers.element.style.display = '';
-    }
+        this.#channel.value = channel.number;
+        return true;
+      });
 
-    if (data.output.notes) {
-      this.#notes.list = {};
-      for (const note of data.output.notes)
-        this.#addNote(note.name, note.number, note.aftertouch);
+      // Use the first entry.
+      if (this.#channel.value == null)
+        this.#channel.value = data.output.channels[0].number;
 
-      this.#notes.element.style.display = '';
+      // Update the channel selector.
+      for (const channel of data.output.channels)
+        this.#channel.addEntry(channel.number, channel.name, this.#channel.value == channel.number);
+
+      // Add the currently selected channel.
+      data.output.channels.find((channel) => {
+        if (channel.number != this.#channel.value)
+          return false;
+
+        this.#addChannel(channel);
+        return true;
+      });
+
+    } else {
+      if (data.output.channel != null)
+        this.#channel.value = data.output.channel;
+
+      else
+        this.#channel.value = 0;
+
+      this.#channel.addEntry(this.#channel.value);
+      this.#addChannel(data.output);
     }
   }
 
